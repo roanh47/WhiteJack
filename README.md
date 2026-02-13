@@ -1,5 +1,7 @@
 # WhiteJack
 
+Hosted at https://WhiteJack.pythonanywhere.com
+
 This Flask app implements the Whitejack dice game rules (d12-based) you described — a house called the Scar vs a player.
 
 Rules implemented
