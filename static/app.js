@@ -1,44 +1,44 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // intercept action forms to show a roll animation before submitting
-  document.querySelectorAll('.action-form').forEach(form => {
-    form.addEventListener('submit', (e) => {
-      // For non-tick actions we can submit immediately; for tick/cut we show animation
+  // Vang alle actie-formulieren op om een animatie te tonen voordat het formulier wordt verzonden
+  document.querySelectorAll('.action-form').forEach(formulier => {
+    formulier.addEventListener('submit', (e) => {
+      // Voor niet-tick acties direct verzenden; voor tick/cut eerst animatie
       e.preventDefault();
-      const action = form.dataset.action;
-      const handIndex = form.dataset.handIndex;
-      const display = document.querySelector('.roll-display[data-hand="' + handIndex + '"]');
+      const actie = formulier.dataset.action;
+      const handIndex = formulier.dataset.handIndex;
+      const weergave = document.querySelector('.roll-display[data-hand="' + handIndex + '"]');
 
-      const doSubmit = () => {
-        form.submit();
+      const verzenden = () => {
+        formulier.submit();
       };
 
-      if (action === 'tick' || action === 'cut') {
-        // animate random numbers for ~700ms then submit
+      if (actie === 'tick' || actie === 'cut') {
+        // Laat ~700ms lang willekeurige getallen zien als animatie, daarna verzenden
         let start = Date.now();
-        display.classList.add('rolling');
+        weergave.classList.add('rolling');
         const interval = setInterval(() => {
           const t = Math.floor(Math.random() * 12) + 1;
-          display.textContent = t;
+          weergave.textContent = t;
           if (Date.now() - start > 700) {
             clearInterval(interval);
-            display.classList.remove('rolling');
-            doSubmit();
+            weergave.classList.remove('rolling');
+            verzenden();
           }
         }, 80);
       } else {
-        doSubmit();
+        verzenden();
       }
     });
   });
 
-  // start form: slight animation of scar area if present
-  const startForm = document.querySelector('form[action$="start"]');
-  if (startForm) {
-    startForm.addEventListener('submit', (e) => {
+  // Startformulier: kleine animatie van het Scar-gebied als deze aanwezig is
+  const startFormulier = document.querySelector('form[action$="start"]');
+  if (startFormulier) {
+    startFormulier.addEventListener('submit', (e) => {
       e.preventDefault();
-      const scarDisplay = document.querySelector('.roll-display[data-hand="0"]');
-      if (scarDisplay) scarDisplay.classList.add('rolling');
-      setTimeout(() => startForm.submit(), 500);
+      const scarWeergave = document.querySelector('.roll-display[data-hand="0"]');
+      if (scarWeergave) scarWeergave.classList.add('rolling');
+      setTimeout(() => startFormulier.submit(), 500);
     });
   }
 });

@@ -1,24 +1,25 @@
+
 # WhiteJack
 
-Hosted at https://WhiteJack.pythonanywhere.com
+Gehost op https://WhiteJack.pythonanywhere.com
 
-This Flask app implements the Whitejack dice game rules (d12-based) you described — a house called the Scar vs a player.
+Deze Flask-app implementeert het Whitejack dobbelspel (gebaseerd op d12) — een huis genaamd de Scar tegen een speler.
 
-Rules implemented
-- Round start: player places a bet and both player and Scar roll 2d12.
-    - Round start: player places one or more bets (multiple hands). Each hand and the Scar roll 2d12.
-- If Scar rolls 24 on initial roll, Scar immediately wins and all players lose.
-- If a player rolls 24 on their hand, that hand immediately wins.
-- Player actions per hand:
-	- "Tick": roll another d12 and add to the total.
-	- "Snip": stand (stop rolling) for that hand.
-	- "Feint": if your initial two dice are a pair, you may split into two hands (each keeps one die and draws one more to complete two rolls).
-	- "Cut the fuse": after initial two rolls, double the bet and gain exactly one extra tick (only available once per hand).
-- Auto-win: if a hand reaches 6 dice without busting (>24), it wins automatically.
-- Scar behavior: after player stands on all hands Scar rolls until their total is >= 18, or they hit 24, or bust.
-- Result: each hand is compared against Scar's final total; busts lose, higher non-bust beats Scar, tie is reported as tie.
+Regels geïmplementeerd
+- Ronde start: speler plaatst een inzet en zowel de speler als de Scar gooien 2d12.
+	- Ronde start: speler plaatst één of meer inzetten (meerdere handen). Elke hand en de Scar gooien 2d12.
+- Als Scar 24 gooit bij de eerste worp, wint Scar direct en verliezen alle spelers.
+- Als een speler 24 gooit met zijn hand, wint die hand direct.
+- Spelersacties per hand:
+	- "Tick": gooi nog een d12 en tel deze op bij het totaal.
+	- "Snip": passen (stoppen met gooien) voor die hand.
+	- "Feint": als je eerste twee dobbelstenen een paar zijn, mag je splitsen in twee handen (elke hand houdt één dobbelsteen en gooit er nog één bij).
+	- "Cut the fuse": na de eerste twee worpen mag je de inzet verdubbelen en krijg je precies één extra tick (slechts één keer per hand mogelijk).
+- Automatische winst: als een hand 6 dobbelstenen bereikt zonder te busten (>24), wint deze automatisch.
+- Scar-gedrag: nadat de speler op alle handen heeft gepast, gooit Scar tot zijn totaal >= 18 is, of hij 24 gooit, of bust.
+- Resultaat: elke hand wordt vergeleken met het eindtotaal van Scar; busts verliezen, hoger niet-bustend totaal wint van Scar, gelijkspel wordt als gelijkspel gemeld.
 
-Quick start
+Snel starten
 
 ```bash
 python3 -m venv .venv
@@ -28,9 +29,9 @@ export FLASK_APP=app.py
 flask run
 ```
 
-Open http://127.0.0.1:5000 in your browser.
+Open http://127.0.0.1:5000 in je browser.
 
-Notes for future features
-- Payout calculation, player account/bankroll and multiple players
-- Fancy UI and dice artwork
-- Special behavior for particular dice values (like A/J/Q/K equivalents)
+Notities voor toekomstige functies
+- Uitbetalingsberekening, spelersaccount/bank en meerdere spelers
+- Mooie UI en dobbelsteenafbeeldingen
+- Speciaal gedrag voor bepaalde dobbelsteenwaarden (zoals A/J/Q/K equivalenten)
