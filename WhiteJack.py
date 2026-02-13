@@ -1,6 +1,6 @@
 
 
-from flask import Flask, session, render_template, redirect, url_for, request
+from flask import Flask, session, render_template, redirect, url_for, request, send_from_directory
 import random
 
 # Maak een nieuwe Flask-applicatie aan
@@ -28,8 +28,9 @@ def start_ronde(inzet):
     scar = {'worpen': [gooi_d12(), gooi_d12()], 'resultaat': ''}
     session['handen'] = [hand]
     session['scar'] = scar
-    session['openbaar'] = False
+    session['openbaar'] = True  # Scar's rolls visible from start
     session['ronde_afgerond'] = False
+    session['round'] = 1
 
 def alle_handen_klaar_of_afgerond():
     """Controleer of alle handen klaar zijn (gepast of resultaat bekend)."""
@@ -67,29 +68,28 @@ def index():
     for hand in handen:
         hand['totaal'] = totaal(hand['worpen'])
         if hand['totaal'] > 24:
-            hand['resultaat'] = 'Bust (meer dan 24)'
+            hand['resultaat'] = f'Bust ({hand["totaal"]} > 24)'
             hand['actief'] = False
+            hand['worpen'] = []  # Reset the numbers when bust
         if len(hand['worpen']) >= 6 and hand['totaal'] <= 24:
             hand['resultaat'] = 'Gewonnen (6 worpen zonder bust)'
             hand['actief'] = False
     if scar:
         scar['totaal'] = totaal(scar['worpen'])
-    return render_template('index.html', state='playing', handen=handen, scar=scar, openbaar=session.get('openbaar', False))
+    return render_template('index.html', state='playing', handen=handen, scar=scar, openbaar=session.get('openbaar', False), ronde_afgerond=session.get('ronde_afgerond', False), round=session.get('round', 1))
 
 
 @app.route('/start', methods=['POST'])
 def start():
     inzet = int(request.form.get('bet', 1))
-    aantal = int(request.form.get('hands', 1))
     # Initialiseer scar
     scar = {'worpen': [gooi_d12(), gooi_d12()], 'resultaat': ''}
-    handen = []
-    for _ in range(max(1, aantal)):
-        handen.append({'worpen': [gooi_d12(), gooi_d12()], 'inzet': inzet, 'actief': True, 'cut_gebruikt': False, 'mag_een_extra': False, 'resultaat': ''})
-    session['handen'] = handen
+    hand = {'worpen': [gooi_d12(), gooi_d12()], 'inzet': inzet, 'actief': True, 'cut_gebruikt': False, 'mag_een_extra': False, 'resultaat': ''}
+    session['handen'] = [hand]
     session['scar'] = scar
-    session['openbaar'] = False
+    session['openbaar'] = True  # Scar's rolls visible from start
     session['ronde_afgerond'] = False
+    session['round'] = 1
     # Controleer direct op auto-win/verlies
     controleer_auto_condities()
     return redirect(url_for('index'))
@@ -98,7 +98,7 @@ def start():
 @app.route('/actie/<int:hand_index>/<actie>', methods=['POST'])
 def actie(hand_index, actie):
     handen = session.get('handen', [])
-    if hand_index < 0 of hand_index >= len(handen):
+    if hand_index < 0 or hand_index >= len(handen):
         return redirect(url_for('index'))
     hand = handen[hand_index]
 
@@ -149,41 +149,52 @@ def actie(hand_index, actie):
             hand['resultaat'] = 'Gewonnen (6 worpen zonder bust)'
             hand['actief'] = False
         if totaal(hand['worpen']) > 24:
-            hand['resultaat'] = 'Bust (meer dan 24)'
+            hand['resultaat'] = f'Bust ({totaal(hand["worpen"])} > 24)'
             hand['actief'] = False
+            hand['worpen'] = []
 
     # Als alle handen klaar zijn, laat Scar gooien en bepaal resultaat
     if alle_handen_klaar_of_afgerond():
-        scar = session['scar']
-        if scar.get('resultaat', '') == '':
-            while totaal(scar['worpen']) < 18:
-                scar['worpen'].append(gooi_d12())
-                if totaal(scar['worpen']) >= 24:
-                    break
-        session['openbaar'] = True
+        if session['round'] == 2:
+            session['round'] = 3
+        elif session['round'] == 3:
+            scar = session['scar']
+            if scar.get('resultaat', '') == '':
+                while totaal(scar['worpen']) < 18:
+                    scar['worpen'].append(gooi_d12())
+                    if totaal(scar['worpen']) >= 24:
+                        break
+            session['openbaar'] = True
 
-        # Bepaal resultaat per hand
-        scar_totaal = totaal(scar['worpen'])
-        for hand in session['handen']:
-            if hand.get('resultaat', '') in ('Gewonnen (24)', 'Gewonnen (6 worpen zonder bust)'):
-                continue
-            speler_totaal = totaal(hand['worpen'])
-            if speler_totaal > 24:
-                hand['resultaat'] = 'Verloren (bust)'
-            else:
-                if scar_totaal > 24:
-                    hand['resultaat'] = 'Gewonnen (Scar bust)'
+            # Bepaal resultaat per hand
+            scar_totaal = totaal(scar['worpen'])
+            for hand in session['handen']:
+                if hand.get('resultaat', '') in ('Gewonnen (24)', 'Gewonnen (6 worpen zonder bust)'):
+                    continue
+                speler_totaal = totaal(hand['worpen'])
+                if speler_totaal > 24:
+                    hand['resultaat'] = 'Verloren (bust)'
                 else:
-                    if speler_totaal > scar_totaal:
-                        hand['resultaat'] = f'Gewonnen ({speler_totaal} vs {scar_totaal})'
-                    elif speler_totaal < scar_totaal:
-                        hand['resultaat'] = f'Verloren ({speler_totaal} vs {scar_totaal})'
+                    if scar_totaal > 24:
+                        hand['resultaat'] = 'Gewonnen (Scar bust)'
                     else:
-                        hand['resultaat'] = f'Gelijkspel ({speler_totaal} vs {scar_totaal})'
-        session['scar'] = scar
-        session['handen'] = session['handen']
-        session['ronde_afgerond'] = True
+                        if speler_totaal > scar_totaal:
+                            hand['resultaat'] = f'Gewonnen ({speler_totaal} vs {scar_totaal})'
+                        elif speler_totaal < scar_totaal:
+                            hand['resultaat'] = f'Verloren ({speler_totaal} vs {scar_totaal})'
+                        else:
+                            hand['resultaat'] = f'Gelijkspel ({speler_totaal} vs {scar_totaal})'
+            session['scar'] = scar
+            session['handen'] = session['handen']
+            session['ronde_afgerond'] = True
 
+    return redirect(url_for('index'))
+
+
+@app.route('/next_round', methods=['POST'])
+def next_round():
+    if session.get('round') == 1:
+        session['round'] = 2
     return redirect(url_for('index'))
 
 
@@ -334,6 +345,11 @@ def action(hand_index, action):
 def reset():
     session.clear()
     return redirect(url_for('index'))
+
+
+@app.route('/media/<path:filename>')
+def media(filename):
+    return send_from_directory('media', filename)
 
 
 if __name__ == '__main__':

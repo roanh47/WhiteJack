@@ -1,65 +1,86 @@
+
 {% extends 'layout.html' %}
 {% block body %}
 
 {% if state == 'idle' %}
-  <form method="post" action="{{ url_for('start') }}">
-    <label>Bet amount: <input type="number" name="bet" value="1" min="1"></label>
-    <label style="margin-left:12px">Number of hands (multiple bets): <input type="number" name="hands" value="1" min="1" max="6"></label>
-    <button type="submit" style="margin-left:12px">Start Round</button>
-  </form>
+  <div class="welkomscherm" style="display:flex;flex-direction:column;align-items:center;margin-top:60px;">
+    <h2 style="font-size:32px;margin-bottom:16px;">Welkom bij WhiteJack!</h2>
+    <p style="font-size:18px;margin-bottom:24px;max-width:400px;text-align:center;">Dit is een dobbelspel gebaseerd op blackjack. Vul hieronder je inzet in en klik op <b>Start ronde</b> om te beginnen.</p>
+    <form method="post" action="{{ url_for('start') }}" style="background:rgba(255,255,255,0.04);padding:24px 32px;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,0.2);display:flex;flex-direction:column;align-items:center;gap:18px;">
+      <div style="display:flex;gap:18px;align-items:center;">
+        <label style="font-size:16px;">Inzet:
+          <input type="number" name="bet" value="1" min="1" style="padding:8px;border-radius:8px;border:1px solid #444;background:#222;color:#fff;margin-left:8px;width:80px;">
+        </label>
+      </div>
+      <button type="submit" class="btn primary" style="font-size:18px;padding:12px 32px;border-radius:10px;background:linear-gradient(90deg,#ffb020,#ffdf7a);color:#081224;font-weight:700;margin-top:12px;box-shadow:0 2px 8px rgba(255,176,32,0.2);">Start ronde</button>
+    </form>
+  </div>
 
 {% elif state == 'playing' %}
 
+  <h2>Round {{ round }}</h2>
+
   <div class="hand"><strong>Scar (dealer):</strong>
-  {% for c in scar.rolls %}
-    <span class="card">{% if revealed %}{{ c }}{% else %}Hidden{% endif %}</span>
+  {% for c in scar.worpen %}
+    <span class="card scar-roll" data-roll="{{ c }}">&mdash;</span>
   {% endfor %}
-  {% if revealed %}- Total: {{ scar.total }}{% endif %}
+  {% if openbaar %}<span class="scar-total" style="display:none;">- Totaal: {{ scar.totaal }}</span>{% endif %}
   </div>
 
-  <h3>Your hands</h3>
-  {% for h in hands %}
-    <div class="hand card-group">
-      <div class="hand-header">
-        <strong>Hand {{ loop.index }}</strong>
-        <span class="bet">Bet: {{ h.bet }}</span>
-      </div>
-      <div class="rolls">
-      {% for r in h.rolls %}
-        <div class="card dice">{{ r }}</div>
-      {% endfor %}
-        <div class="card roll-display" data-hand="{{ loop.index0 }}">&mdash;</div>
-      </div>
-      <div class="hand-meta">Total: <span class="total">{{ h.total }}</span>
-        {% if h.result %} - <span class="result">{{ h.result }}</span>{% endif %}
-      </div>
 
-      <div class="actions">
-      {% if not h.result and h.active %}
-        <form class="action-form" method="post" action="{{ url_for('action', hand_index=loop.index0, action='tick') }}" data-hand-index="{{ loop.index0 }}" data-action="tick">
-          <button type="submit" class="btn primary">Tick</button>
-        </form>
-        <form class="action-form" method="post" action="{{ url_for('action', hand_index=loop.index0, action='snip') }}" data-hand-index="{{ loop.index0 }}" data-action="snip">
-          <button type="submit" class="btn">Snip</button>
-        </form>
-        {% if h.cut_used == False and h.rolls|length == 2 %}
-        <form class="action-form" method="post" action="{{ url_for('action', hand_index=loop.index0, action='cut') }}" data-hand-index="{{ loop.index0 }}" data-action="cut">
-          <button type="submit" class="btn warn">Cut the fuse</button>
-        </form>
-        {% endif %}
-      {% endif %}
-      </div>
+  {% for hand in handen %}
+  <div class="hand card-group">
+    <div class="hand-header">
+      <span class="bet">Inzet: {{ hand.inzet }}</span>
     </div>
+    <div class="rolls">
+    {% for r in hand.worpen %}
+      <div class="card dice" data-roll="{{ r }}">&mdash;</div>
+    {% endfor %}
+      <div class="card roll-display" data-hand="{{ loop.index0 }}">&mdash;</div>
+    </div>
+    <div class="hand-meta"><span class="total" style="display:none;">Totaal: {{ hand.totaal }}</span>
+      {% if hand.resultaat %} - <span class="result">{{ hand.resultaat }}</span>{% endif %}
+    </div>
+
+    <div class="actions" style="display:flex;flex-direction:row;gap:16px;align-items:center;">
+    {% if hand.worpen|length == 2 and hand.worpen[0] == hand.worpen[1] and session['handen']|length == 1 %}
+      <form class="action-form" method="post" action="{{ url_for('actie', hand_index=loop.index0, actie='feint') }}" data-hand-index="{{ loop.index0 }}" style="margin:0;padding:0;">
+        <button type="submit" class="btn" title="Splits je hand in twee aparte handen." style="font-size:20px;padding:16px 32px;min-width:120px;">Feint</button>
+      </form>
+    {% endif %}
+    {% if not hand.resultaat and hand.actief and round > 1 %}
+      <form class="action-form" method="post" action="{{ url_for('actie', hand_index=loop.index0, actie='tick') }}" data-hand-index="{{ loop.index0 }}" data-action="tick" style="margin:0;padding:0;">
+        <button type="submit" class="btn primary" title="Gooi nog een dobbelsteen bij deze hand." style="margin-right:8px;font-size:20px;padding:16px 32px;min-width:120px;">Tick</button>
+      </form>
+      <form class="action-form" method="post" action="{{ url_for('actie', hand_index=loop.index0, actie='snip') }}" data-hand-index="{{ loop.index0 }}" style="margin:0;padding:0;">
+        <button type="submit" class="btn" title="Stoppen met gooien voor deze hand" style="margin-right:8px;font-size:20px;padding:16px 32px;min-width:120px;">Snip</button>
+      </form>
+      {% if hand.cut_gebruikt == False and hand.worpen|length == 2 %}
+      <form class="action-form" method="post" action="{{ url_for('actie', hand_index=loop.index0, actie='cut') }}" data-hand-index="{{ loop.index0 }}" data-action="cut" style="margin:0;padding:0;">
+        <button type="submit" class="btn warn" title="Verdubbel je inzet en krijg één extra worp (alleen direct na de eerste twee worpen)." style="font-size:20px;padding:16px 32px;min-width:120px;">Cut the fuse</button>
+      </form>
+      {% endif %}
+    {% endif %}
+    {% if round == 1 %}
+    <form method="post" action="{{ url_for('next_round') }}" style="margin:0;padding:0;">
+      <button type="submit" class="btn primary" style="font-size:20px;padding:16px 32px;min-width:120px;">Start Round 2</button>
+    </form>
+    {% endif %}
+    </div>
+  </div>
   {% endfor %}
 
-  {% if hands|length == 1 and hands[0].rolls|length == 2 and hands[0].rolls[0] == hands[0].rolls[1] and not hands[0].result %}
-    <form method="post" action="{{ url_for('action', hand_index=0, action='feint') }}">
-      <button type="submit">Feint (split pair)</button>
-    </form>
-  {% endif %}
+  <a href="{{ url_for('reset') }}" class="btn">Reset</a>
 
-  <a href="{{ url_for('reset') }}">Reset</a>
+{% endif %}
 
+{% if ronde_afgerond %}
+<script>
+  setTimeout(() => {
+    window.location.href = '{{ url_for("reset") }}';
+  }, 3000);
+</script>
 {% endif %}
 
 {% endblock %}
