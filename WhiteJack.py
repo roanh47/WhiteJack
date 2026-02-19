@@ -1,356 +1,354 @@
-
-
-from flask import Flask, session, render_template, redirect, url_for, request, send_from_directory
+# Flask-functies voor routes, sessies en templates.
+from flask import Flask, session, render_template, redirect, url_for, request
+# random gebruiken we om d12-worpen te simuleren.
 import random
 
-# Maak een nieuwe Flask-applicatie aan
+# Flask-app initialiseren.
 app = Flask(__name__)
-app.secret_key = "geheim-nederlands"  # Nodig voor sessies
+# Secret key is nodig zodat Flask sessiegegevens veilig kan ondertekenen.
+app.secret_key = "geheim-nederlands"
 
-def gooi_d12():
-    """Gooi een dobbelsteen met 12 kanten en geef het resultaat terug."""
+
+# Gooi 1 d12 en geef het resultaat (1 t/m 12) terug.
+def roll_d12() -> int:
     return random.randint(1, 12)
 
-def totaal(rollen):
-    """Tel alle worpen bij elkaar op."""
-    return sum(rollen)
 
-def start_ronde(inzet):
-    """Start een nieuwe ronde met een hand voor de speler en de Scar."""
-    hand = {
-        'worpen': [gooi_d12(), gooi_d12()],  # Twee dobbelstenen gooien
-        'inzet': inzet,
-        'actief': True,
-        'cut_gebruikt': False,
-        'mag_een_extra': False,
-        'resultaat': ''
+# Bereken het totaal van een lijst worpen.
+def total(rolls):
+    return sum(rolls)
+
+
+# Maak een nieuwe speler-hand met standaard startwaarden.
+def hand_base(bet: int):
+    return {
+        # Startworp volgens regels: 2d12.
+        "rolls": [roll_d12(), roll_d12()],
+        # Inzet van deze hand.
+        "bet": bet,
+        # Of de hand nog acties mag doen.
+        "active": True,
+        # Of "cut the fuse" al gebruikt is op deze hand.
+        "cut_used": False,
+        # Als cut gebruikt is, moet de speler exact 1 keer tick doen.
+        "must_tick_once": False,
+        # Houdt bij of deze hand in de huidige ronde al actie deed.
+        "acted_round": 0,
+        # Eindstatus/resultaattekst van deze hand.
+        "result": "",
     }
-    scar = {'worpen': [gooi_d12(), gooi_d12()], 'resultaat': ''}
-    session['handen'] = [hand]
-    session['scar'] = scar
-    session['openbaar'] = True  # Scar's rolls visible from start
-    session['ronde_afgerond'] = False
-    session['round'] = 1
 
-def alle_handen_klaar_of_afgerond():
-    """Controleer of alle handen klaar zijn (gepast of resultaat bekend)."""
-    for hand in session.get('handen', []):
-        if hand.get('actief', False) and hand.get('resultaat', '') == '':
+
+# Werk automatische hand-status bij (24, bust, of 6 worpen zonder bust).
+def finalize_hand_state(hand):
+    # Huidig totaal van de hand berekenen.
+    t = total(hand["rolls"])
+
+    # Exact 24 is directe winst.
+    if t == 24 and not hand["result"]:
+        hand["result"] = "Win (24)"
+        hand["active"] = False
+    # Boven 24 is bust en dus einde hand.
+    elif t > 24 and not hand["result"]:
+        hand["result"] = f"Bust ({t} > 24)"
+        hand["active"] = False
+    # 6 worpen zonder bust is automatische winst.
+    elif len(hand["rolls"]) >= 6 and t <= 24 and not hand["result"]:
+        hand["result"] = "Win (6 rolls without bust)"
+        hand["active"] = False
+
+
+# Controleer of alle actieve handen in deze ronde hun actie al gedaan hebben.
+def all_player_actions_done_for_round(round_no: int):
+    # Door alle spelershanden in de sessie lopen.
+    for hand in session.get("hands", []):
+        # Eerst altijd automatische status updaten.
+        finalize_hand_state(hand)
+        # Als hand nog actief is en nog niet handelde in deze ronde: niet klaar.
+        if hand["active"] and hand["acted_round"] < round_no:
             return False
+    # Anders zijn alle benodigde acties klaar.
     return True
 
-def controleer_auto_condities():
-    """Controleer of er direct win/verlies is bij 24."""
-    scar = session['scar']
-    scar_totaal = totaal(scar['worpen'])
-    if scar_totaal == 24:
-        scar['resultaat'] = 'Scar wint direct met 24'
-        session['openbaar'] = True
-        for hand in session['handen']:
-            hand['resultaat'] = 'Verloren (Scar heeft 24)'
-        session['ronde_afgerond'] = True
-        session['scar'] = scar
-        return
 
-    # Controleer of speler direct 24 heeft
-    for hand in session['handen']:
-        if totaal(hand['worpen']) == 24:
-            hand['resultaat'] = 'Gewonnen (24)'
+# Verwerk het speciale geval: Scar heeft exact 24.
+def resolve_if_scar_24():
+    # Huidig Scar-totaal bepalen.
+    scar_total = total(session["scar"]["rolls"])
+    # Alleen iets doen als Scar echt 24 heeft.
+    if scar_total != 24:
+        return False
+
+    # Scar-resultaat markeren.
+    session["scar"]["result"] = "Scar hits 24"
+    # Alle handen aflopen en verliezen behalve handen met eigen 24.
+    for hand in session["hands"]:
+        finalize_hand_state(hand)
+        if hand["result"] != "Win (24)":
+            hand["result"] = "Lose (Scar has 24)"
+            hand["active"] = False
+    # Ronde is definitief afgerond.
+    session["round"] = 4
+    session["round_resolved"] = True
+    return True
 
 
-@app.route('/')
+# Ronde 2: Scar rolt precies 1 extra d12 (tenzij Scar al 24 had).
+def run_round2_scar_roll():
+    if total(session["scar"]["rolls"]) != 24:
+        session["scar"]["rolls"].append(roll_d12())
+
+
+# Ronde 3: Scar blijft rollen tot 18, 24 of bust.
+def run_round3_scar_rolls():
+    # Kortere variabele voor leesbaarheid.
+    scar = session["scar"]
+    # Doorrollen tot minimaal 18 bereikt is.
+    while total(scar["rolls"]) < 18:
+        scar["rolls"].append(roll_d12())
+        # Stop direct bij 24 of hoger.
+        if total(scar["rolls"]) >= 24:
+            break
+
+
+# Vergelijk alle handen met Scar en zet definitieve uitslag.
+def resolve_final_results():
+    # Scar-totaal eenmalig bepalen.
+    scar_total = total(session["scar"]["rolls"])
+
+    # Elke hand afzonderlijk beoordelen.
+    for hand in session["hands"]:
+        # Eerst automatische status nogmaals afdwingen.
+        finalize_hand_state(hand)
+
+        # Deze twee wincondities blijven altijd staan.
+        if hand["result"] in ("Win (24)", "Win (6 rolls without bust)"):
+            continue
+
+        # Totaal speler voor vergelijking.
+        player_total = total(hand["rolls"])
+
+        # Uitkomstmatrix speler vs Scar.
+        if player_total > 24:
+            hand["result"] = "Lose (bust)"
+        elif scar_total > 24:
+            hand["result"] = "Win (Scar bust)"
+        elif player_total > scar_total:
+            hand["result"] = f"Win ({player_total} vs {scar_total})"
+        elif player_total < scar_total:
+            hand["result"] = f"Lose ({player_total} vs {scar_total})"
+        else:
+            hand["result"] = f"Tie ({player_total} vs {scar_total})"
+
+        # Hand na eindvergelijking inactief zetten.
+        hand["active"] = False
+
+    # Hele partij afronden.
+    session["round"] = 4
+    session["round_resolved"] = True
+
+
+# Hoofdroute: toont startscherm of actief spelbord.
+@app.route("/")
 def index():
-    handen = session.get('handen')
-    scar = session.get('scar')
-    if not handen:
-        return render_template('index.html', state='idle')
-    # Bereken totaal en flags
-    for hand in handen:
-        hand['totaal'] = totaal(hand['worpen'])
-        if hand['totaal'] > 24:
-            hand['resultaat'] = f'Bust ({hand["totaal"]} > 24)'
-            hand['actief'] = False
-            hand['worpen'] = []  # Reset the numbers when bust
-        if len(hand['worpen']) >= 6 and hand['totaal'] <= 24:
-            hand['resultaat'] = 'Gewonnen (6 worpen zonder bust)'
-            hand['actief'] = False
-    if scar:
-        scar['totaal'] = totaal(scar['worpen'])
-    return render_template('index.html', state='playing', handen=handen, scar=scar, openbaar=session.get('openbaar', False), ronde_afgerond=session.get('ronde_afgerond', False), round=session.get('round', 1))
+    # Probeer handen uit sessie te lezen.
+    hands = session.get("hands")
 
-
-@app.route('/start', methods=['POST'])
-def start():
-    inzet = int(request.form.get('bet', 1))
-    # Initialiseer scar
-    scar = {'worpen': [gooi_d12(), gooi_d12()], 'resultaat': ''}
-    hand = {'worpen': [gooi_d12(), gooi_d12()], 'inzet': inzet, 'actief': True, 'cut_gebruikt': False, 'mag_een_extra': False, 'resultaat': ''}
-    session['handen'] = [hand]
-    session['scar'] = scar
-    session['openbaar'] = True  # Scar's rolls visible from start
-    session['ronde_afgerond'] = False
-    session['round'] = 1
-    # Controleer direct op auto-win/verlies
-    controleer_auto_condities()
-    return redirect(url_for('index'))
-
-
-@app.route('/actie/<int:hand_index>/<actie>', methods=['POST'])
-def actie(hand_index, actie):
-    handen = session.get('handen', [])
-    if hand_index < 0 or hand_index >= len(handen):
-        return redirect(url_for('index'))
-    hand = handen[hand_index]
-
-    # Geen acties toegestaan als ronde al klaar is
-    if session.get('ronde_afgerond', False):
-        return redirect(url_for('index'))
-
-    if actie == 'tick':
-        # Gooi één d12 voor deze hand
-        if not hand.get('actief', False):
-            return redirect(url_for('index'))
-        hand['worpen'].append(gooi_d12())
-        if hand.get('mag_een_extra', False):
-            hand['mag_een_extra'] = False
-            hand['actief'] = False
-
-    elif actie == 'snip':
-        hand['actief'] = False
-
-    elif actie == 'cut':
-        # Cut the fuse mag alleen direct na de eerste twee worpen en als het nog niet gebruikt is
-        if len(hand['worpen']) == 2 and not hand['cut_gebruikt']:
-            hand['inzet'] = hand['inzet'] * 2
-            hand['cut_gebruikt'] = True
-            hand['mag_een_extra'] = True
-
-    elif actie == 'feint':
-        # Splitsen mag alleen als eerste actie na de eerste twee worpen en als het een paar is
-        if len(session['handen']) == 1 and len(hand['worpen']) == 2 and hand['worpen'][0] == hand['worpen'][1]:
-            r0 = hand['worpen'][0]
-            r1 = hand['worpen'][1]
-            inzet = hand['inzet']
-            nieuwe_hand1 = {'worpen': [r0, gooi_d12()], 'inzet': inzet, 'actief': True, 'cut_gebruikt': False, 'mag_een_extra': False, 'resultaat': ''}
-            nieuwe_hand2 = {'worpen': [r1, gooi_d12()], 'inzet': inzet, 'actief': True, 'cut_gebruikt': False, 'mag_een_extra': False, 'resultaat': ''}
-            session['handen'] = [nieuwe_hand1, nieuwe_hand2]
-            session.modified = True
-            return redirect(url_for('index'))
-
-    session['handen'] = handen
-    session.modified = True
-
-    # Controleer na elke actie op auto-win/bust
-    for hand in session['handen']:
-        if totaal(hand['worpen']) == 24:
-            hand['resultaat'] = 'Gewonnen (24)'
-            hand['actief'] = False
-        if len(hand['worpen']) >= 6 and totaal(hand['worpen']) <= 24:
-            hand['resultaat'] = 'Gewonnen (6 worpen zonder bust)'
-            hand['actief'] = False
-        if totaal(hand['worpen']) > 24:
-            hand['resultaat'] = f'Bust ({totaal(hand["worpen"])} > 24)'
-            hand['actief'] = False
-            hand['worpen'] = []
-
-    # Als alle handen klaar zijn, laat Scar gooien en bepaal resultaat
-    if alle_handen_klaar_of_afgerond():
-        if session['round'] == 2:
-            session['round'] = 3
-        elif session['round'] == 3:
-            scar = session['scar']
-            if scar.get('resultaat', '') == '':
-                while totaal(scar['worpen']) < 18:
-                    scar['worpen'].append(gooi_d12())
-                    if totaal(scar['worpen']) >= 24:
-                        break
-            session['openbaar'] = True
-
-            # Bepaal resultaat per hand
-            scar_totaal = totaal(scar['worpen'])
-            for hand in session['handen']:
-                if hand.get('resultaat', '') in ('Gewonnen (24)', 'Gewonnen (6 worpen zonder bust)'):
-                    continue
-                speler_totaal = totaal(hand['worpen'])
-                if speler_totaal > 24:
-                    hand['resultaat'] = 'Verloren (bust)'
-                else:
-                    if scar_totaal > 24:
-                        hand['resultaat'] = 'Gewonnen (Scar bust)'
-                    else:
-                        if speler_totaal > scar_totaal:
-                            hand['resultaat'] = f'Gewonnen ({speler_totaal} vs {scar_totaal})'
-                        elif speler_totaal < scar_totaal:
-                            hand['resultaat'] = f'Verloren ({speler_totaal} vs {scar_totaal})'
-                        else:
-                            hand['resultaat'] = f'Gelijkspel ({speler_totaal} vs {scar_totaal})'
-            session['scar'] = scar
-            session['handen'] = session['handen']
-            session['ronde_afgerond'] = True
-
-    return redirect(url_for('index'))
-
-
-@app.route('/next_round', methods=['POST'])
-def next_round():
-    if session.get('round') == 1:
-        session['round'] = 2
-    return redirect(url_for('index'))
-
-
-@app.route('/reset')
-def reset():
-    session.clear()
-    return redirect(url_for('index'))
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
-
-
-@app.route('/')
-def index():
-    hands = session.get('hands')
-    scar = session.get('scar')
+    # Geen actieve sessie -> startscherm.
     if not hands:
-        return render_template('index.html', state='idle')
-    # compute totals and flags
-    for h in hands:
-        h['total'] = total(h['rolls'])
-        if h['total'] > 24:
-            h['result'] = 'Bust'
-            h['active'] = False
-        if len(h['rolls']) >= 6 and h['total'] <= 24:
-            h['result'] = 'Win (6 rolls without bust)'
-            h['active'] = False
-    if scar:
-        scar['total'] = total(scar['rolls'])
-    return render_template('index.html', state='playing', hands=hands, scar=scar, revealed=session.get('revealed', False))
+        return render_template("index.html", state="idle")
+
+    # Scar uit sessie lezen met veilige fallback.
+    scar = session.get("scar", {"rolls": [], "result": ""})
+
+    # Totaal en automatische status per hand updaten voor de UI.
+    for hand in hands:
+        finalize_hand_state(hand)
+        hand["total"] = total(hand["rolls"])
+
+    # Scar totaal voor weergave.
+    scar["total"] = total(scar["rolls"])
+
+    # Speelscherm renderen met alle benodigde state.
+    return render_template(
+        "index.html",
+        state="playing",
+        hands=hands,
+        scar=scar,
+        round_no=session.get("round", 1),
+        round_resolved=session.get("round_resolved", False),
+    )
 
 
-@app.route('/start', methods=['POST'])
+# Start een nieuwe partij.
+@app.route("/start", methods=["POST"])
 def start():
-    bet = int(request.form.get('bet', 1))
-    num = int(request.form.get('hands', 1))
-    # initialize scar
-    scar = {'rolls': [roll_d12(), roll_d12()], 'result': ''}
-    hands = []
-    for _ in range(max(1, num)):
-        hands.append({'rolls': [roll_d12(), roll_d12()], 'bet': bet, 'active': True, 'cut_used': False, 'allowed_one_extra': False, 'result': ''})
-    session['hands'] = hands
-    session['scar'] = scar
-    session['revealed'] = False
-    session['round_resolved'] = False
-    # initial auto conditions check moved here
-    check_auto_conditions()
-    return redirect(url_for('index'))
+    # Ronde 1: inzetten plaatsen + initiële 2d12 voor speler(s) en Scar.
 
+    # Bet en aantal handen uit formulier lezen met ondergrens 1.
+    bet = max(1, int(request.form.get("bet", 1)))
+    num_hands = max(1, int(request.form.get("hands", 1)))
 
-@app.route('/action/<int:hand_index>/<action>', methods=['POST'])
-def action(hand_index, action):
-    hands = session.get('hands', [])
-    if hand_index < 0 or hand_index >= len(hands):
-        return redirect(url_for('index'))
-    hand = hands[hand_index]
+    # Spelerhanden initialiseren.
+    session["hands"] = [hand_base(bet) for _ in range(num_hands)]
+    # Scar initialiseren met 2 startworpen.
+    session["scar"] = {"rolls": [roll_d12(), roll_d12()], "result": ""}
+    # Start in ronde 1.
+    session["round"] = 1
+    # Nog geen einduitslag.
+    session["round_resolved"] = False
 
-    # No actions allowed if already resolved
-    if session.get('round_resolved', False):
-        return redirect(url_for('index'))
+    # Eventuele auto-win/auto-bust direct op start toepassen.
+    for hand in session["hands"]:
+        finalize_hand_state(hand)
 
-    if action == 'tick':
-        # roll one d12 for that hand
-        if not hand.get('active', False):
-            return redirect(url_for('index'))
-        # If cut was used and allowed_one_extra is True, consume it and then close
-        hand['rolls'].append(roll_d12())
-        if hand.get('allowed_one_extra', False):
-            hand['allowed_one_extra'] = False
-            hand['active'] = False
-
-    elif action == 'snip':
-        hand['active'] = False
-
-    elif action == 'cut':
-        # Cut the fuse allowed only immediately after the initial two rolls and not used yet
-        if len(hand['rolls']) == 2 and not hand['cut_used']:
-            hand['bet'] = hand['bet'] * 2
-            hand['cut_used'] = True
-            hand['allowed_one_extra'] = True
-
-    elif action == 'feint':
-        # Split only allowed as the first action immediately after initial two rolls and if pair
-        if len(session['hands']) == 1 and len(hand['rolls']) == 2 and hand['rolls'][0] == hand['rolls'][1]:
-            # Create two hands: each gets one of the original dice and draws one new d12 to complete two rolls
-            r0 = hand['rolls'][0]
-            r1 = hand['rolls'][1]
-            bet = hand['bet']
-            new_hand1 = {'rolls': [r0, roll_d12()], 'bet': bet, 'active': True, 'cut_used': False, 'allowed_one_extra': False, 'result': ''}
-            new_hand2 = {'rolls': [r1, roll_d12()], 'bet': bet, 'active': True, 'cut_used': False, 'allowed_one_extra': False, 'result': ''}
-            session['hands'] = [new_hand1, new_hand2]
-            session.modified = True
-            return redirect(url_for('index'))
-
-    session['hands'] = hands
+    # Speciale Scar-24 regel direct afhandelen.
+    resolve_if_scar_24()
+    # Markeer sessie als gewijzigd.
     session.modified = True
-
-    # After each action, check auto-win conditions per hand
-    for h in session['hands']:
-        if total(h['rolls']) == 24:
-            h['result'] = 'Win (24)'
-            h['active'] = False
-        if len(h['rolls']) >= 6 and total(h['rolls']) <= 24:
-            h['result'] = 'Win (6 rolls without bust)'
-            h['active'] = False
-        if total(h['rolls']) > 24:
-            h['result'] = 'Bust'
-            h['active'] = False
-
-    # If all player hands are no longer active, run Scar behavior and resolve
-    if all_hands_stood_or_resolved():
-        # Reveal scar and have them roll until >=18 or bust or 24
-        scar = session['scar']
-        if scar.get('result', '') == '':
-            while total(scar['rolls']) < 18:
-                scar['rolls'].append(roll_d12())
-                if total(scar['rolls']) >= 24:
-                    break
-        session['revealed'] = True
-
-        # Evaluate each hand
-        scar_total = total(scar['rolls'])
-        for h in session['hands']:
-            if h.get('result', '') in ('Win (24)', 'Win (6 rolls without bust)'):
-                continue
-            p_total = total(h['rolls'])
-            if p_total > 24:
-                h['result'] = 'Lose (bust)'
-            else:
-                if scar_total > 24:
-                    h['result'] = 'Win (Scar bust)'
-                else:
-                    if p_total > scar_total:
-                        h['result'] = f'Win ({p_total} vs {scar_total})'
-                    elif p_total < scar_total:
-                        h['result'] = f'Lose ({p_total} vs {scar_total})'
-                    else:
-                        h['result'] = f'Tie ({p_total} vs {scar_total})'
-        session['scar'] = scar
-        session['hands'] = session['hands']
-        session['round_resolved'] = True
-
-    return redirect(url_for('index'))
+    # Terug naar hoofdpagina.
+    return redirect(url_for("index"))
 
 
-@app.route('/reset')
+# Handmatige overgang van ronde 1 naar ronde 2.
+@app.route("/next_round", methods=["POST"])
+def next_round():
+    # Ronde 2 start alleen vanuit ronde 1 en als spel niet al klaar is.
+    if session.get("round", 1) != 1 or session.get("round_resolved", False):
+        return redirect(url_for("index"))
+
+    # Zet huidige ronde naar 2.
+    session["round"] = 2
+    session.modified = True
+    return redirect(url_for("index"))
+
+
+# Actions: tick, snip, feint, cut.
+@app.route("/action/<int:hand_index>/<action>", methods=["POST"])
+def action(hand_index: int, action: str):
+    # Huidige handen en ronde uit sessie lezen.
+    hands = session.get("hands", [])
+    round_no = session.get("round", 1)
+
+    # Blokkeer acties als spel voorbij is of ronde ongeldig.
+    if session.get("round_resolved", False) or round_no not in (1, 2, 3):
+        return redirect(url_for("index"))
+
+    # Blokkeer ongeldige hand-index.
+    if hand_index < 0 or hand_index >= len(hands):
+        return redirect(url_for("index"))
+
+    # Geselecteerde hand ophalen.
+    hand = hands[hand_index]
+    # Status updaten voordat actie verwerkt wordt.
+    finalize_hand_state(hand)
+
+    # Geen acties op inactieve/eindigde hand.
+    if not hand["active"]:
+        return redirect(url_for("index"))
+
+    # Ronde 1: feint.
+    if action == "feint" and round_no == 1:
+        # Ronde 1 actie: feint alleen bij een openings-paar.
+        if len(hand["rolls"]) == 2 and hand["rolls"][0] == hand["rolls"][1]:
+            # Linker hand: eerste dobbelsteen + nieuwe d12.
+            left = {
+                "rolls": [hand["rolls"][0], roll_d12()],
+                "bet": hand["bet"],
+                "active": True,
+                "cut_used": False,
+                "must_tick_once": False,
+                "acted_round": 0,
+                "result": "",
+            }
+            # Rechter hand: tweede dobbelsteen + nieuwe d12.
+            right = {
+                "rolls": [hand["rolls"][1], roll_d12()],
+                "bet": hand["bet"],
+                "active": True,
+                "cut_used": False,
+                "must_tick_once": False,
+                "acted_round": 0,
+                "result": "",
+            }
+            # Vervang huidige hand door twee nieuwe handen.
+            hands[hand_index : hand_index + 1] = [left, right]
+            # Auto-status direct op beide nieuwe handen toepassen.
+            for h in hands:
+                finalize_hand_state(h)
+
+        # Sessie opslaan en terug.
+        session["hands"] = hands
+        session.modified = True
+        return redirect(url_for("index"))
+
+    # Ronde 1: cut.
+    if action == "cut" and round_no == 1:
+        # Ronde 1 actie: cut the fuse verdubbelt inzet en geeft exact 1 extra tick.
+        if len(hand["rolls"]) == 2 and not hand["cut_used"]:
+            hand["bet"] *= 2
+            hand["cut_used"] = True
+            hand["must_tick_once"] = True
+
+        # Sessie opslaan en terug.
+        session["hands"] = hands
+        session.modified = True
+        return redirect(url_for("index"))
+
+    # Alleen tick/snip toegestaan in ronde 2 of 3.
+    if action not in ("tick", "snip") or round_no not in (2, 3):
+        return redirect(url_for("index"))
+
+    # Elke hand mag maar 1 actie per ronde doen.
+    if hand["acted_round"] >= round_no:
+        return redirect(url_for("index"))
+
+    # Tick: gooi een extra d12.
+    if action == "tick":
+        hand["rolls"].append(roll_d12())
+    # Snip: stoppen met deze hand, maar niet als cut nog verplichte tick verwacht.
+    elif action == "snip" and not hand.get("must_tick_once", False):
+        hand["active"] = False
+    # Alles buiten bovenstaande is ongeldig.
+    else:
+        return redirect(url_for("index"))
+
+    # Markeer dat de hand in deze ronde een actie deed.
+    hand["acted_round"] = round_no
+
+    # Als cut actief was: verplichte extra tick verbruikt en hand sluiten.
+    if hand.get("must_tick_once", False):
+        hand["must_tick_once"] = False
+        hand["active"] = False
+
+    # Auto-status bijwerken na actie.
+    finalize_hand_state(hand)
+    session["hands"] = hands
+
+    # Als alle handen klaar zijn voor deze ronde, Scar-fase uitvoeren.
+    if all_player_actions_done_for_round(round_no):
+        # Einde ronde 2: Scar rolt 1 keer, dan eventueel door naar ronde 3.
+        if round_no == 2:
+            run_round2_scar_roll()
+            if not resolve_if_scar_24():
+                session["round"] = 3
+        # Einde ronde 3: Scar speelt uit en eindresultaten worden gezet.
+        elif round_no == 3:
+            run_round3_scar_rolls()
+            resolve_final_results()
+
+    # Sessiewijzigingen bevestigen.
+    session.modified = True
+    return redirect(url_for("index"))
+
+
+# Reset het spel volledig door sessie te wissen.
+@app.route("/reset")
 def reset():
     session.clear()
-    return redirect(url_for('index'))
+    return redirect(url_for("index"))
 
 
-@app.route('/media/<path:filename>')
-def media(filename):
-    return send_from_directory('media', filename)
-
-
-if __name__ == '__main__':
+# Start lokale Flask-devserver als dit bestand direct wordt uitgevoerd.
+if __name__ == "__main__":
     app.run(debug=True)
