@@ -1,154 +1,137 @@
-# WhiteJack - Een dobbelspel gebaseerd op Blackjack met d12
+# WhiteJack - Een dobbelspel met gebruikersauthenticatie
 # Doel: kom zo dicht mogelijk bij 24 zonder erover te gaan
 
-from flask import Flask, render_template, session, redirect, url_for, request
+from flask import Flask, render_template, session, redirect, url_for, request, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 import random
 
 app = Flask(__name__)
-app.secret_key = 'whitejack-secret-key'
+app.config['SECRET_KEY'] = 'whitejack-secret-key'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///whitejack.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
 
 
+# =============================================================================
+# DATABASE MODELLEN
+# =============================================================================
+class User(UserMixin, db.Model):
+    """Gebruiker model - slaat username, wachtwoord en geld op"""
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(120), nullable=False)
+    money = db.Column(db.Integer, default=100)  # Start met €100
+    
+    def set_password(self, password):
+        """Hash het wachtwoord voor veilige opslag"""
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        """Controleer of het wachtwoord klopt"""
+        return check_password_hash(self.password_hash, password)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Laad gebruiker op basis van ID (nodig voor Flask-Login)"""
+    return User.query.get(int(user_id))
+
+
+# =============================================================================
+# AUTHENTICATIE ROUTES (Login / Register)
+# =============================================================================
 @app.route('/')
 def index():
-    """Start pagina"""
-    return render_template('index.html')
+    """Start pagina - als niet ingelogd, toon login/register keuze"""
+    if current_user.is_authenticated:
+        return redirect(url_for('lobby'))
+    return render_template('auth.html')
 
 
-@app.route('/game', methods=['GET', 'POST'])
-def game():
-    """
-    Het hele spel op één pagina.
-    We gebruiken 'ronde' om bij te houden waar we zijn:
-    - ronde 1: Start, eerste tick (2d12)
-    - ronde 2: Keuze uit tick/snip/cut (1 tick max)
-    - ronde 3: Laatste kans, meerdere ticks mogelijk
-    """
+@app.route('/login', methods=['POST'])
+def login():
+    """Inloggen met bestaand account"""
+    username = request.form.get('username')
+    password = request.form.get('password')
     
-    if request.method == 'POST':
-        actie = request.form.get('actie')
-        spel = session.get('spel')
-        
-        if not spel:
-            return redirect(url_for('index'))
-        
-        ronde = spel['ronde']
-        
-        # =====================================================================
-        # RONDE 1: Eerste tick - beide rollen 2d12
-        # =====================================================================
-        if ronde == 1 and actie == 'tick':
-            spel['rolls'] = [rol_d12(), rol_d12()]
-            spel['scar_rolls'] = [rol_d12(), rol_d12()]
-            
-            # Check Whitejack (24)
-            if sum(spel['rolls']) == 24:
-                spel['resultaat'] = 'Whitejack! Je wint!'
-                spel['game_over'] = True
-            elif sum(spel['scar_rolls']) == 24:
-                spel['resultaat'] = 'Scar heeft Whitejack!'
-                spel['game_over'] = True
-            else:
-                # Door naar ronde 2
-                spel['ronde'] = 2
-        
-        # =====================================================================
-        # RONDE 2: Tick (1 keer), Snip, of Cut
-        # =====================================================================
-        elif ronde == 2:
-            
-            if actie == 'tick':
-                # Slechts 1 tick in ronde 2
-                spel['rolls'].append(rol_d12())
-                # Scar rolt mee
-                if sum(spel['scar_rolls']) != 24:
-                    spel['scar_rolls'].append(rol_d12())
-                    # Check of Scar bust
-                    if sum(spel['scar_rolls']) > 24:
-                        spel['resultaat'] = 'Scar bust! Je wint!'
-                        spel['game_over'] = True
-                
-                # Check of speler bust
-                if sum(spel['rolls']) > 24:
-                    spel['resultaat'] = 'Bust!'
-                    spel['game_over'] = True
-                    scar_speelt_uit(spel)
-                
-                # Na tick: altijd door naar ronde 3 (tenzij game over)
-                if not spel['game_over']:
-                    spel['ronde'] = 3
-            
-            elif actie == 'cut':
-                # Cut the fuse: bet x2, 1 roll, dan door
-                spel['bet'] *= 2
-                spel['cut_used'] = True
-                spel['rolls'].append(rol_d12())
-                
-                # Scar rolt mee
-                if sum(spel['scar_rolls']) != 24:
-                    spel['scar_rolls'].append(rol_d12())
-                    if sum(spel['scar_rolls']) > 24:
-                        spel['resultaat'] = 'Scar bust! Je wint!'
-                        spel['game_over'] = True
-                
-                # Na cut: door naar ronde 3
-                if not spel['game_over']:
-                    spel['ronde'] = 3
-            
-            elif actie == 'snip':
-                # Geen rollen, direct door naar ronde 3
-                spel['ronde'] = 3
-        
-        # =====================================================================
-        # RONDE 3: Laatste ronde - tick of snip om te eindigen
-        # =====================================================================
-        elif ronde == 3:
-            
-            if actie == 'tick':
-                spel['rolls'].append(rol_d12())
-                
-                # Check bust of 6 dice
-                if sum(spel['rolls']) > 24:
-                    spel['resultaat'] = 'Bust!'
-                    spel['game_over'] = True
-                elif len(spel['rolls']) >= 6:
-                    spel['resultaat'] = '6 dice! Auto-win!'
-                    spel['game_over'] = True
-                
-                # In ronde 3: na tick altijd eindigen
-                if not spel['game_over']:
-                    bepaal_winaar(spel)
-                    spel['game_over'] = True
-            
-            elif actie == 'snip':
-                # Eindig spel, bepaal winnaar
-                bepaal_winaar(spel)
-                spel['game_over'] = True
-        
-        session['spel'] = spel
+    user = User.query.filter_by(username=username).first()
     
-    # Toon de game
-    spel = session.get('spel')
-    if not spel:
+    if user and user.check_password(password):
+        login_user(user)
+        return redirect(url_for('lobby'))
+    else:
+        flash('Verkeerde gebruikersnaam of wachtwoord', 'error')
+        return redirect(url_for('index'))
+
+
+@app.route('/register', methods=['POST'])
+def register():
+    """Nieuw account aanmaken"""
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    # Check of username al bestaat
+    if User.query.filter_by(username=username).first():
+        flash('Gebruikersnaam is al in gebruik', 'error')
         return redirect(url_for('index'))
     
-    return render_template('game.html',
-        spel=spel,
-        ronde=spel['ronde'],
-        player_total=sum(spel['rolls']),
-        scar_total=sum(spel['scar_rolls'])
-    )
+    # Maak nieuwe gebruiker
+    new_user = User(username=username, money=100)
+    new_user.set_password(password)
+    db.session.add(new_user)
+    db.session.commit()
+    
+    # Log direct in
+    login_user(new_user)
+    flash('Account aangemaakt! Je krijgt €100 startgeld.', 'success')
+    return redirect(url_for('lobby'))
 
 
+@app.route('/logout')
+@login_required
+def logout():
+    """Uitloggen"""
+    logout_user()
+    session.pop('spel', None)
+    return redirect(url_for('index'))
+
+
+# =============================================================================
+# LOBBY - Waar je het spel start
+# =============================================================================
+@app.route('/lobby')
+@login_required
+def lobby():
+    """Lobby - toon je geld en start knop"""
+    return render_template('lobby.html', user=current_user)
+
+
+# =============================================================================
+# SPEL LOGICA (aangepast voor gebruikers)
+# =============================================================================
 @app.route('/start', methods=['POST'])
+@login_required
 def start():
-    """Maak nieuw spel aan"""
+    """Start een nieuw spel - check of gebruiker genoeg geld heeft"""
     bet = int(request.form.get('bet', 1))
     
+    # Check of gebruiker genoeg geld heeft
+    if bet > current_user.money:
+        flash('Je hebt niet genoeg geld!', 'error')
+        return redirect(url_for('lobby'))
+    
+    # Start spel
     session['spel'] = {
         'bet': bet,
         'rolls': [],
         'scar_rolls': [],
-        'ronde': 1,        # We beginnen in ronde 1
+        'ronde': 1,
         'cut_used': False,
         'resultaat': None,
         'game_over': False
@@ -157,18 +140,136 @@ def start():
     return redirect(url_for('game'))
 
 
+@app.route('/game', methods=['GET', 'POST'])
+@login_required
+def game():
+    """Het spel zelf"""
+    
+    if request.method == 'POST':
+        actie = request.form.get('actie')
+        spel = session.get('spel')
+        
+        if not spel:
+            return redirect(url_for('lobby'))
+        
+        ronde = spel['ronde']
+        
+        # RONDE 1: Eerste tick
+        if ronde == 1 and actie == 'tick':
+            spel['rolls'] = [rol_d12(), rol_d12()]
+            spel['scar_rolls'] = [rol_d12(), rol_d12()]
+            
+            if sum(spel['rolls']) == 24:
+                spel['resultaat'] = 'Whitejack! Je wint!'
+                spel['game_over'] = True
+                win_money(spel['bet'] * 2)  # 2x uitbetaling
+            elif sum(spel['scar_rolls']) == 24:
+                spel['resultaat'] = 'Scar heeft Whitejack!'
+                spel['game_over'] = True
+                lose_money(spel['bet'])
+            else:
+                spel['ronde'] = 2
+        
+        # RONDE 2: Tick, Snip, Cut
+        elif ronde == 2:
+            if actie == 'tick':
+                spel['rolls'].append(rol_d12())
+                if sum(spel['scar_rolls']) != 24:
+                    spel['scar_rolls'].append(rol_d12())
+                    if sum(spel['scar_rolls']) > 24:
+                        spel['resultaat'] = 'Scar bust! Je wint!'
+                        spel['game_over'] = True
+                        win_money(spel['bet'] * 2)
+                
+                if sum(spel['rolls']) > 24:
+                    spel['resultaat'] = 'Bust!'
+                    spel['game_over'] = True
+                    lose_money(spel['bet'])
+                elif not spel['game_over']:
+                    spel['ronde'] = 3
+            
+            elif actie == 'cut':
+                spel['bet'] *= 2
+                spel['cut_used'] = True
+                spel['rolls'].append(rol_d12())
+                if sum(spel['scar_rolls']) != 24:
+                    spel['scar_rolls'].append(rol_d12())
+                    if sum(spel['scar_rolls']) > 24:
+                        spel['resultaat'] = 'Scar bust! Je wint!'
+                        spel['game_over'] = True
+                        win_money(spel['bet'] * 2)
+                if not spel['game_over']:
+                    spel['ronde'] = 3
+            
+            elif actie == 'snip':
+                spel['ronde'] = 3
+        
+        # RONDE 3: Laatste ronde
+        elif ronde == 3:
+            if actie == 'tick':
+                spel['rolls'].append(rol_d12())
+                
+                if sum(spel['rolls']) > 24:
+                    spel['resultaat'] = 'Bust!'
+                    spel['game_over'] = True
+                    lose_money(spel['bet'])
+                elif len(spel['rolls']) >= 6:
+                    spel['resultaat'] = '6 dice! Auto-win!'
+                    spel['game_over'] = True
+                    win_money(spel['bet'] * 2)
+                else:
+                    bepaal_winaar(spel)
+                    spel['game_over'] = True
+            
+            elif actie == 'snip':
+                bepaal_winaar(spel)
+                spel['game_over'] = True
+        
+        session['spel'] = spel
+    
+    spel = session.get('spel')
+    if not spel:
+        return redirect(url_for('lobby'))
+    
+    return render_template('game.html',
+        spel=spel,
+        ronde=spel['ronde'],
+        player_total=sum(spel['rolls']),
+        scar_total=sum(spel['scar_rolls']),
+        user=current_user
+    )
+
+
 @app.route('/reset')
+@login_required
 def reset():
-    """Reset het spel"""
+    """Reset het spel en ga terug naar lobby"""
     session.pop('spel', None)
-    return redirect(url_for('index'))
+    return redirect(url_for('lobby'))
+
+
+# =============================================================================
+# GELD BEHEER
+# =============================================================================
+def win_money(amount):
+    """Geef winst aan gebruiker"""
+    current_user.money += amount
+    db.session.commit()
+    flash(f'Je wint €{amount}!', 'success')
+
+
+def lose_money(amount):
+    """Haal verlies af van gebruiker"""
+    current_user.money -= amount
+    db.session.commit()
+    flash(f'Je verliest €{amount}', 'error')
 
 
 # =============================================================================
 # HELPERS
 # =============================================================================
 def rol_d12():
-    """Rol een d12 (1-12)"""
+    """Rol een d12"""
     return random.randint(1, 12)
 
 
@@ -183,23 +284,33 @@ def scar_speelt_uit(spel):
 
 
 def bepaal_winaar(spel):
-    """Bepaal wie wint"""
+    """Bepaal winnaar en update geld"""
     speler = sum(spel['rolls'])
     scar = sum(spel['scar_rolls'])
     
-    # Scar speelt uit als nodig
     if sum(spel['scar_rolls']) < 18 and sum(spel['scar_rolls']) != 24:
         scar_speelt_uit(spel)
         scar = sum(spel['scar_rolls'])
     
     if scar > 24:
         spel['resultaat'] = 'Je wint! Scar is bust.'
+        win_money(spel['bet'] * 2)
     elif speler > scar:
         spel['resultaat'] = 'Je wint!'
+        win_money(spel['bet'] * 2)
     elif speler < scar:
         spel['resultaat'] = 'Je verliest!'
+        lose_money(spel['bet'])
     else:
         spel['resultaat'] = 'Gelijkspel!'
+        flash('Gelijkspel - je krijgt je inzet terug', 'info')
+
+
+# =============================================================================
+# DATABASE AANMAKEN
+# =============================================================================
+with app.app_context():
+    db.create_all()
 
 
 if __name__ == '__main__':
