@@ -9,31 +9,6 @@ from game_logic import Game
 round3_bp = Blueprint('Round3', __name__)
 
 
-@round3_bp.route('/show')
-def show():
-    """Toon Ronde 3"""
-    g = session.get('game')
-    if not g:
-        return redirect(url_for('index'))
-    
-    g['round'] = 3
-    session['game'] = g
-    
-    class Hand:
-        pass
-    hand = Hand()
-    hand.__dict__.update(g)
-    
-    return render_template('game.html',
-        hand=hand,
-        scar={'rolls': g['scar_rolls']},
-        player_total=sum(g['rolls']),
-        scar_total=sum(g['scar_rolls']),
-        round_no=3,
-        game_over=g['game_over']
-    )
-
-
 @round3_bp.route('/r3-action', methods=['POST'])
 def action_r3():
     """Ronde 3 acties: tick of snip (laatste ronde)"""
@@ -64,8 +39,8 @@ def action_r3():
         g['result'] = 'Win (6 dice)'
         g['active'] = False
     
-    # Spel eindigt na deze ronde
-    if not g['result']:
+    # Spel eindigt na deze ronde (snip of na tick)
+    if not g['result'] or action == 'snip':
         # Scar speelt uit (rolt tot 18, 24, of bust)
         scar = g['scar_rolls']
         while sum(scar) < 18 and sum(scar) != 24:
