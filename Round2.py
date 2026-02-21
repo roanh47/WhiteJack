@@ -50,6 +50,20 @@ def action_r2():
         session['game'] = g
         if not g['game_over']:
             g['round'] = 3
+            session['game'] = g
+            # Render direct ronde 3 zonder redirect
+            class Hand:
+                pass
+            hand = Hand()
+            hand.__dict__.update(g)
+            return render_template('game.html',
+                hand=hand,
+                scar={'rolls': g['scar_rolls']},
+                player_total=sum(rolls),
+                scar_total=sum(g['scar_rolls']),
+                round_no=3,
+                game_over=False
+            )
         
     elif action == 'cut':
         # Cut the fuse: verdubbel inzet, rol 1 keer, dan door naar r3
