@@ -1,0 +1,121 @@
+{% extends 'layout.html' %}
+{% block body_class %}game-page{% endblock %}
+{% block body %}
+
+<div class="game-stage">
+  <h2 class="ronde-titel">{% if game_over %}Uitslag{% else %}Ronde {{ round_no }}{% endif %}</h2>
+
+  <div class="table-board">
+    <img class="tafel-logo" src="/static/media/WhiteJack Logo.png" alt="WhiteJack logo">
+
+    <div class="table-slot scar-slot">
+      <div class="hand card-group">
+        <div class="hand-header"><span class="bet">Scar</span></div>
+        <div class="rolls">
+        {% for c in scar.rolls %}
+          <span class="card scar-roll">{{ c }}</span>
+        {% endfor %}
+          <span class="card scar-placeholder">&mdash;</span>
+        </div>
+        <div class="hand-meta">
+          <span class="scar-total">Totaal: {{ scar_total }}</span>
+          {% if scar.result %} - <span class="result">{{ scar.result }}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="table-slot player-slot">
+      <div class="hand card-group">
+        <div class="hand-meta">
+          <span class="total">Totaal: {{ player_total }}</span>
+          {% if hand.result %} - <span class="result">{{ hand.result }}</span>{% endif %}
+        </div>
+        <div class="rolls">
+        {% for r in hand.rolls %}
+          <div class="card dice">{{ r }}</div>
+        {% endfor %}
+          <div class="card roll-display">&mdash;</div>
+        </div>
+        <div class="hand-header"><span class="bet">Speler - Inzet: €{{ hand.bet }}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RONDE 1: Tick om te beginnen -->
+  {% if round_no == 1 and not game_over and not hand.result and hand.rolls|length == 0 %}
+  <form method="post" action="{{ url_for('Round1.tick_r1') }}" style="margin-top: 20px; text-align: center;">
+    <button type="submit" class="btn primary">Tick</button>
+  </form>
+  {% endif %}
+
+  <!-- RONDE 2: Tick, Snip, of Cut the fuse -->
+  {% if round_no == 2 and not game_over and hand.active and not hand.result %}
+  <div class="actions" style="display:flex; flex-direction:row; gap:12px; align-items:center; justify-content:center; margin-top: 20px;">
+    
+    <!-- Cut the fuse: alleen bij exact 2 worpen en nog niet gebruikt -->
+    {% if hand.rolls|length == 2 and not hand.cut_used %}
+    <form method="post" action="{{ url_for('Round2.action_r2') }}" style="margin:0;">
+      <input type="hidden" name="actie" value="cut">
+      <button type="submit" class="btn warn">Cut the fuse</button>
+    </form>
+    {% endif %}
+    
+    <!-- Tick: altijd mogelijk in ronde 2 -->
+    <form method="post" action="{{ url_for('Round2.action_r2') }}" style="margin:0;">
+      <input type="hidden" name="actie" value="tick">
+      <button type="submit" class="btn primary">
+        {% if hand.must_tick %}Tick (verplicht){% else %}Tick{% endif %}
+      </button>
+    </form>
+    
+    <!-- Snip: alleen als we geen verplichte tick moeten doen -->
+    {% if not hand.must_tick %}
+    <form method="post" action="{{ url_for('Round2.action_r2') }}" style="margin:0;">
+      <input type="hidden" name="actie" value="snip">
+      <button type="submit" class="btn secondary">Snip</button>
+    </form>
+    {% endif %}
+    
+  </div>
+  {% endif %}
+
+  <!-- RONDE 3: Alleen Tick of Snip -->
+  {% if round_no == 3 and not game_over and hand.active and not hand.result %}
+  <div class="actions" style="display:flex; flex-direction:row; gap:12px; align-items:center; justify-content:center; margin-top: 20px;">
+    
+    <form method="post" action="{{ url_for('Round3.action_r3') }}" style="margin:0;">
+      <input type="hidden" name="actie" value="tick">
+      <button type="submit" class="btn primary">Tick</button>
+    </form>
+    
+    <form method="post" action="{{ url_for('Round3.action_r3') }}" style="margin:0;">
+      <input type="hidden" name="actie" value="snip">
+      <button type="submit" class="btn secondary">Snip</button>
+    </form>
+    
+  </div>
+  {% endif %}
+
+  <!-- UITSLAG: Terug naar home knop -->
+  {% if game_over or hand.result %}
+  <div class="actions" style="display:flex; flex-direction:row; gap:12px; align-items:center; justify-content:center; margin-top: 20px;">
+    <a href="{{ url_for('index') }}" class="btn primary">Terug naar Home</a>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- EINDRESULTAAT -->
+{% if game_over or hand.result %}
+<div class="result-panel" style="margin-top: 30px; text-align: center;">
+  <div><strong>Jij:</strong> {{ player_total }}</div>
+  <div><strong>Scar:</strong> {{ scar_total }}</div>
+  <div><strong>Resultaat:</strong> {{ hand.result }}</div>
+  <div class="result-actions" style="margin-top: 15px;">
+    <a class="btn primary" href="{{ url_for('reset') }}">Opnieuw spelen</a>
+    <a class="btn secondary" href="{{ url_for('index') }}">Home</a>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

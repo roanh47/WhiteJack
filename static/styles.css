@@ -7,6 +7,7 @@
 }
 *{box-sizing:border-box}
 body {
+  margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica, Arial;
   background: linear-gradient(135deg, #182848 0%, #071024 50%, #0f1724 100%);
   color: #e6eef8;
@@ -14,20 +15,30 @@ body {
   min-height: 100vh;
   box-sizing: border-box;
 }
+body.game-page {
+  background-image: url('/static/media/game/background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+}
+body.game-page .site-logo{display:none !important;}
 h1{font-size:28px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
-.card-group{background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.02));padding:14px;border-radius:12px;margin-bottom:12px;box-shadow:0 6px 20px rgba(2,6,23,0.6);}
+.card-group{background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.02));padding:14px;border-radius:12px;margin-bottom:12px;box-shadow:none;}
 .hand-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .bet{color:var(--accent);font-weight:600}
 .rolls{display:flex;gap:10px;align-items:center}
 .card{display:inline-flex;align-items:center;justify-content:center;padding:14px 18px;border-radius:10px;background:linear-gradient(180deg,#071226,#0b2236);border:1px solid rgba(255,255,255,0.04);min-width:48px;color:var(--accent);font-weight:700;box-shadow:inset 0 -6px 12px rgba(0,0,0,0.4)}
-.dice{font-size:18px;background:linear-gradient(180deg,#0b2030,#082033);color:#fff}
-.roll-display{min-width:78px;background:linear-gradient(90deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));color:var(--accent);font-size:18px}
+.dice,.scar-roll{font-size:20px;background:linear-gradient(180deg,#0b2030,#082033);color:#fff}
+.roll-display{min-width:78px;background:linear-gradient(90deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));color:var(--accent);font-size:20px}
+.scar-placeholder{min-width:78px;background:linear-gradient(90deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));color:var(--accent);font-size:20px}
 .scar{background:linear-gradient(180deg,#0b2030,#082033);color:#fff}
 .hand-meta{margin-top:8px;color:var(--muted)}
 .actions{margin-top:10px}
 .btn{border:none;padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:#eaf3ff;cursor:pointer;margin-right:8px}
 .btn.primary{background:linear-gradient(90deg,var(--accent),#ffdf7a);color:#081224;font-weight:700}
 .btn.warn{background:#ff6b6b;color:#fff}
+.btn.secondary{background:linear-gradient(180deg,#8f98a8,#70798a);color:#fff;font-weight:700}
 .btn:active{transform:translateY(1px)}
 
 /* Rolling animation */
@@ -44,8 +55,151 @@ h1{font-size:28px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
 form[action$="start"]{display:inline-flex;gap:12px;align-items:center}
 input[type=number]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#eaf3ff}
 
+/* Game op tafel */
+.game-stage{
+  width:min(1000px,100%);
+  margin:0 auto;
+  height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.table-board{
+  width:150%;
+  left:50%;
+  transform:translateX(-50%);
+  aspect-ratio:2048 / 1463;
+  background-image:url('/static/media/game/tafel.png');
+  background-size:contain;
+  background-repeat:no-repeat;
+  background-position:center;
+  position:relative;
+  max-height: calc(100vh - 180px);
+}
+.tafel-logo{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:min(15%,140px);
+  height:auto;
+  opacity:.95;
+  pointer-events:none;
+}
+.ronde-titel{
+  margin:0 0 12px 0;
+  text-align:center;
+}
+.table-slot{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  width:min(76%,640px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.scar-slot{
+  top:25%;
+}
+.player-slot{
+  bottom:25%;
+}
+.table-slot .card-group{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  margin-bottom:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  background:none;
+  border:none;
+  box-shadow:none;
+}
+body.game-page .table-slot .hand-header{
+  justify-content:center;
+}
+body.game-page .player-slot .hand-header{
+  margin-bottom:0;
+  margin-top:8px;
+}
+body.game-page .table-slot .hand-header .bet{
+  font-size:1.3rem;
+}
+body.game-page .scar-slot .hand-header .bet{
+  font-size:1.3rem;
+}
+body.game-page .table-slot .rolls{
+  justify-content:center;
+}
+body.game-page .table-slot .hand-meta{
+  color:#fff;
+  text-align:center;
+  font-size:1.3rem;
+}
+body.game-page .scar-slot .hand-meta{
+  margin-top:8px;
+  margin-bottom:0;
+}
+body.game-page .player-slot .hand-meta{
+  margin-top:0;
+  margin-bottom:8px;
+}
+.total,.scar-total{
+  font-variant-numeric:tabular-nums;
+}
+.game-controls{
+  margin-top:-10px;
+  min-height:48px;
+}
+body.game-page .game-controls .btn{
+  font-size:22px;
+  padding:14px 26px;
+  border-radius:12px;
+}
+.result-panel{
+  margin:14px auto 0 auto;
+  width:min(520px,96%);
+  padding:16px 18px;
+  border-radius:12px;
+  background:rgba(0,0,0,0.45);
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  text-align:center;
+}
+.result-actions{
+  margin-top:8px;
+  display:flex;
+  gap:10px;
+  justify-content:center;
+}
+.result-actions .btn{
+  text-decoration:none;
+}
+
 /* Responsive */
 @media (max-width:640px){
   body{padding:18px}
   .roll-display{min-width:60px}
+  .ronde-titel{margin-bottom:8px}
+  .scar-slot{top:20%}
+  .player-slot{bottom:24%}
+  .tafel-logo{width:min(18%,90px)}
+  .table-slot{width:min(84%,520px)}
+  .table-slot .card-group{min-width:0}
+  .game-controls{margin-top:-6px}
+  body.game-page .game-controls .btn{
+    font-size:18px;
+    padding:12px 20px;
+  }
+  .game-stage{
+    height: calc(100vh - 36px);
+  }
+  .table-board{
+    max-height: calc(100vh - 150px);
+  }
 }

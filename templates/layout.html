@@ -5,8 +5,8 @@
     <title>WhiteJack</title>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
-  <body>
-    <div style="display: flex; justify-content: center; align-items: center; width: 100%; margin-bottom: 16px;">
+  <body class="{% block body_class %}{% endblock %}">
+    <div class="site-logo" style="display: flex; justify-content: center; align-items: center; width: 100%; margin-bottom: 16px;">
       <img src="/static/media/WhiteJack Logo.png" alt="WhiteJack" style="height: 200px;">
     </div>
     {% block body %}{% endblock %}

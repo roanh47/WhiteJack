@@ -1,91 +1,17 @@
 {% extends 'layout.html' %}
 {% block body %}
 
-{% if state == 'idle' %}
-  <div class="welkomscherm" style="display:flex;flex-direction:column;align-items:center;margin-top:60px;">
-    <h2 style="font-size:32px;margin-bottom:16px;">Welkom bij WhiteJack</h2>
-    <p style="font-size:18px;margin-bottom:24px;max-width:480px;text-align:center;">
-      Doel: kom zo dicht mogelijk bij 24 zonder erover te gaan. Je speelt maximaal 3 rondes tegen de Scar.
-    </p>
-    <form method="post" action="{{ url_for('start') }}" style="background:rgba(255,255,255,0.04);padding:24px 32px;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,0.2);display:flex;flex-direction:column;align-items:center;gap:16px;">
-      <label style="font-size:16px;">Inzet per hand:
-        <input type="number" name="bet" value="1" min="1" style="padding:8px;border-radius:8px;border:1px solid #444;background:#222;color:#fff;margin-left:8px;width:80px;">
-      </label>
-      <label style="font-size:16px;">Aantal handen:
-        <input type="number" name="hands" value="1" min="1" max="6" style="padding:8px;border-radius:8px;border:1px solid #444;background:#222;color:#fff;margin-left:8px;width:80px;">
-      </label>
-      <button type="submit" class="btn primary" style="font-size:18px;padding:12px 32px;border-radius:10px;">Start ronde</button>
-    </form>
-  </div>
-
-{% elif state == 'playing' %}
-
-  <h2>Round {{ round_no }}</h2>
-
-  <div class="hand"><strong>Scar:</strong>
-  {% for c in scar.rolls %}
-    <span class="card scar-roll" data-roll="{{ c }}">&mdash;</span>
-  {% endfor %}
-  <span class="scar-total" style="display:none;">- Totaal: {{ scar.total }}</span>
-  {% if scar.result %}<span class="result"> - {{ scar.result }}</span>{% endif %}
-  </div>
-
-  {% if round_no == 1 and not round_resolved %}
-  <form method="post" action="{{ url_for('next_round') }}" style="margin:12px 0 18px 0;">
-    <button type="submit" class="btn primary" style="font-size:18px;padding:12px 24px;">Start Round 2</button>
+<div class="welkomscherm" style="display:flex;flex-direction:column;align-items:center;margin-top:60px;">
+  <h2 style="font-size:32px;margin-bottom:16px;">Welkom bij WhiteJack</h2>
+  <p style="font-size:18px;margin-bottom:24px;max-width:480px;text-align:center;">
+    Doel: kom zo dicht mogelijk bij 24 zonder erover te gaan. Je speelt maximaal 3 rondes tegen de Scar.
+  </p>
+  <form method="post" action="{{ url_for('Round1.start') }}" style="background:rgba(255,255,255,0.04);padding:24px 32px;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,0.2);display:flex;flex-direction:column;align-items:center;gap:16px;">
+    <label style="font-size:16px;">Inzet: €
+      <input type="number" name="bet" value="1" min="1" style="padding:8px;border-radius:8px;border:1px solid #444;background:#222;color:#fff;margin-left:8px;width:80px;">
+    </label>
+    <button type="submit" class="btn primary" style="font-size:18px;padding:12px 32px;border-radius:10px;">Rol de dice!</button>
   </form>
-  {% endif %}
-
-  {% for hand in hands %}
-  <div class="hand card-group">
-    <div class="hand-header"><span class="bet">Hand {{ loop.index }} - Inzet: {{ hand.bet }}</span></div>
-    <div class="rolls">
-    {% for r in hand.rolls %}
-      <div class="card dice" data-roll="{{ r }}">&mdash;</div>
-    {% endfor %}
-      <div class="card roll-display" data-hand="{{ loop.index0 }}">&mdash;</div>
-    </div>
-    <div class="hand-meta">
-      <span class="total" style="display:none;">Totaal: {{ hand.total }}</span>
-      {% if hand.result %} - <span class="result">{{ hand.result }}</span>{% endif %}
-    </div>
-
-    <div class="actions" style="display:flex;flex-direction:row;gap:12px;align-items:center;">
-      {% if round_no == 1 and not round_resolved and not hand.result %}
-        {% if hand.rolls|length == 2 and hand.rolls[0] == hand.rolls[1] %}
-        <form class="action-form" method="post" action="{{ url_for('action', hand_index=loop.index0, action='feint') }}" data-hand-index="{{ loop.index0 }}" style="margin:0;">
-          <button type="submit" class="btn">Feint</button>
-        </form>
-        {% endif %}
-        {% if hand.rolls|length == 2 and not hand.cut_used %}
-        <form class="action-form" method="post" action="{{ url_for('action', hand_index=loop.index0, action='cut') }}" data-hand-index="{{ loop.index0 }}" data-action="cut" style="margin:0;">
-          <button type="submit" class="btn warn">Cut the fuse</button>
-        </form>
-        {% endif %}
-      {% endif %}
-
-      {% if round_no in [2,3] and not round_resolved and hand.active and hand.acted_round < round_no %}
-      <form class="action-form" method="post" action="{{ url_for('action', hand_index=loop.index0, action='tick') }}" data-hand-index="{{ loop.index0 }}" data-action="tick" style="margin:0;">
-        <button type="submit" class="btn primary">Tick</button>
-      </form>
-      {% if not hand.must_tick_once %}
-      <form class="action-form" method="post" action="{{ url_for('action', hand_index=loop.index0, action='snip') }}" data-hand-index="{{ loop.index0 }}" style="margin:0;">
-        <button type="submit" class="btn">Snip</button>
-      </form>
-      {% endif %}
-      {% endif %}
-    </div>
-  </div>
-  {% endfor %}
-
-  <a href="{{ url_for('reset') }}" class="btn">Reset</a>
-
-{% endif %}
-
-{% if round_resolved %}
-<script>
-  setTimeout(() => { window.location.href = '{{ url_for("reset") }}'; }, 3000);
-</script>
-{% endif %}
+</div>
 
 {% endblock %}
