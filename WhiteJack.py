@@ -8,7 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import random
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'whitejack-secret-key'
+app.config['SECRET_KEY'] = 'GeweldigeGokSite'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///whitejack.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -170,7 +170,7 @@ def game():
             else:
                 spel['ronde'] = 2
         
-        # RONDE 2: Tick, Snip, Cut
+        # RONDE 2: Tick, Snip
         elif ronde == 2:
             if actie == 'tick':
                 spel['rolls'].append(rol_d12())
@@ -188,23 +188,10 @@ def game():
                 elif not spel['game_over']:
                     spel['ronde'] = 3
             
-            elif actie == 'cut':
-                spel['bet'] *= 2
-                spel['cut_used'] = True
-                spel['rolls'].append(rol_d12())
-                if sum(spel['scar_rolls']) != 24:
-                    spel['scar_rolls'].append(rol_d12())
-                    if sum(spel['scar_rolls']) > 24:
-                        spel['resultaat'] = 'Scar bust! Je wint!'
-                        spel['game_over'] = True
-                        win_money(spel['bet'] * 2)
-                if not spel['game_over']:
-                    spel['ronde'] = 3
-            
             elif actie == 'snip':
                 spel['ronde'] = 3
         
-        # RONDE 3: Laatste ronde
+        # RONDE 3: Laatste ronde (Cut available after 2 rolls)
         elif ronde == 3:
             if actie == 'tick':
                 spel['rolls'].append(rol_d12())
@@ -217,6 +204,35 @@ def game():
                     spel['resultaat'] = '6 dice! Auto-win!'
                     spel['game_over'] = True
                     win_money(spel['bet'] * 2)
+                else:
+                    bepaal_winaar(spel)
+                    spel['game_over'] = True
+            
+            elif actie == 'cut':
+                spel['bet'] *= 2
+                spel['cut_used'] = True
+                spel['rolls'].append(rol_d12())
+                
+                # Scar rolls too (unless they have Whitejack)
+                if sum(spel['scar_rolls']) != 24:
+                    spel['scar_rolls'].append(rol_d12())
+                
+                # Check Scar bust
+                if sum(spel['scar_rolls']) > 24:
+                    spel['resultaat'] = 'Scar bust! Je wint!'
+                    spel['game_over'] = True
+                    win_money(spel['bet'] * 2)
+                # Check player bust
+                elif sum(spel['rolls']) > 24:
+                    spel['resultaat'] = 'Bust!'
+                    spel['game_over'] = True
+                    lose_money(spel['bet'])
+                # Check 6 dice auto-win
+                elif len(spel['rolls']) >= 6:
+                    spel['resultaat'] = '6 dice! Auto-win!'
+                    spel['game_over'] = True
+                    win_money(spel['bet'] * 2)
+                # Otherwise, determine winner
                 else:
                     bepaal_winaar(spel)
                     spel['game_over'] = True
@@ -315,3 +331,4 @@ with app.app_context():
 
 if __name__ == '__main__':
     app.run(debug=True)
+    

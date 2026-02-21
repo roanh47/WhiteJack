@@ -88,16 +88,8 @@
       </form>
     {% endif %}
     
-    {# RONDE 2: Tick, Snip, Cut #}
+    {# RONDE 2: Tick, Snip #}
     {% if ronde == 2 and not spel.game_over %}
-      {# Cut alleen bij 2 worpen en niet gebruikt #}
-      {% if not spel.cut_used and spel.rolls|length == 2 %}
-        <form method="post" action="{{ url_for('game') }}" style="margin:0;">
-          <input type="hidden" name="actie" value="cut">
-          <button type="submit" class="btn warn">Cut the fuse</button>
-        </form>
-      {% endif %}
-      
       <form method="post" action="{{ url_for('game') }}" style="margin:0;">
         <input type="hidden" name="actie" value="tick">
         <button type="submit" class="btn primary">Tick</button>
@@ -109,8 +101,16 @@
       </form>
     {% endif %}
     
-    {# RONDE 3: Tick of Snip #}
+    {# RONDE 3: Tick, Snip, Cut (na 2 worpen) #}
     {% if ronde == 3 and not spel.game_over %}
+      {# Cut available in round 3 if not used yet #}
+      {% if not spel.cut_used %}
+        <form method="post" action="{{ url_for('game') }}" style="margin:0;">
+          <input type="hidden" name="actie" value="cut">
+          <button type="submit" class="btn warn">Cut the fuse</button>
+        </form>
+      {% endif %}
+      
       <form method="post" action="{{ url_for('game') }}" style="margin:0;">
         <input type="hidden" name="actie" value="tick">
         <button type="submit" class="btn primary">Tick</button>
