@@ -5,9 +5,9 @@
 {# Flash messages voor winst/verlies #}
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
-    <div style="position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:10000;">
+    <div class="flash-messages" style="position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:10000;">
       {% for category, message in messages %}
-        <div style="padding:12px 24px;margin-bottom:8px;border-radius:8px;background:{% if category == 'error' %}#f44336{% elif category == 'success' %}#4CAF50{% else %}#333{% endif %};color:white;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+        <div class="flash-message" style="padding:12px 24px;margin-bottom:8px;border-radius:8px;background:{% if category == 'error' %}#f44336{% elif category == 'success' %}#4CAF50{% else %}#333{% endif %};color:white;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:opacity 0.5s;">
           {{ message }}
         </div>
       {% endfor %}
@@ -20,14 +20,14 @@
   <div style="font-size:24px;color:#4CAF50;">€{{ user.money }}</div>
 </div>
 
-<div class="game-stage">
+<div class="game-stage" data-initial-deal="{{ 'true' if is_initial_deal else 'false' }}">
   
   {# Titel #}
   <h2 class="ronde-titel">
     {% if spel.game_over %}
       Uitslag
     {% else %}
-      Ronde {{ ronde }}
+      Jouw Beurt
     {% endif %}
   </h2>
 
@@ -38,9 +38,9 @@
     <div class="table-slot scar-slot">
       <div class="hand card-group">
         <div class="hand-header"><span class="bet">Scar</span></div>
-        <div class="rolls">
+        <div class="rolls" id="scar-rolls" data-count="{{ spel.scar_rolls|length }}">
           {% for c in spel.scar_rolls %}
-            <span class="card scar-roll">{{ c }}</span>
+            <span class="card scar-roll" data-value="{{ c }}">{{ c }}</span>
           {% endfor %}
           {% if not spel.scar_rolls %}
             <span class="card scar-placeholder">?</span>
@@ -62,9 +62,9 @@
             <span class="total">Totaal: {{ player_total }}</span>
           {% endif %}
         </div>
-        <div class="rolls">
+        <div class="rolls" id="player-rolls">
           {% for r in spel.rolls %}
-            <span class="card scar-roll">{{ r }}</span>
+            <span class="card scar-roll" data-value="{{ r }}">{{ r }}</span>
           {% endfor %}
           {% if not spel.rolls %}
             <span class="card scar-placeholder">?</span>
@@ -77,48 +77,27 @@
     </div>
   </div>
 
-  {# ACTIE KNOPPEN per ronde #}
+  {# ACTIE KNOPPEN - Blackjack style #}
   <div class="actions" style="display:flex; flex-direction:row; gap:12px; align-items:center; justify-content:center; margin-top: 20px;">
     
-    {# RONDE 1: Alleen Tick #}
-    {% if ronde == 1 and not spel.game_over %}
-      <form method="post" action="{{ url_for('game') }}" style="margin:0;">
-        <input type="hidden" name="actie" value="tick">
-        <button type="submit" class="btn primary">Tick</button>
-      </form>
-    {% endif %}
-    
-    {# RONDE 2: Tick, Snip #}
-    {% if ronde == 2 and not spel.game_over %}
-      <form method="post" action="{{ url_for('game') }}" style="margin:0;">
-        <input type="hidden" name="actie" value="tick">
-        <button type="submit" class="btn primary">Tick</button>
-      </form>
-      
-      <form method="post" action="{{ url_for('game') }}" style="margin:0;">
-        <input type="hidden" name="actie" value="snip">
-        <button type="submit" class="btn secondary">Snip</button>
-      </form>
-    {% endif %}
-    
-    {# RONDE 3: Tick, Snip, Cut (na 2 worpen) #}
-    {% if ronde == 3 and not spel.game_over %}
-      {# Cut available in round 3 if not used yet #}
+    {# ACTIVE GAME: Tick, Snip, Cut #}
+    {% if not spel.game_over %}
+      {# Cut the Fuse - available anytime if not used yet #}
       {% if not spel.cut_used %}
         <form method="post" action="{{ url_for('game') }}" style="margin:0;">
           <input type="hidden" name="actie" value="cut">
-          <button type="submit" class="btn warn">Cut the fuse</button>
+          <button type="submit" class="btn warn">Cut the Fuse (2x inzet)</button>
         </form>
       {% endif %}
       
       <form method="post" action="{{ url_for('game') }}" style="margin:0;">
         <input type="hidden" name="actie" value="tick">
-        <button type="submit" class="btn primary">Tick</button>
+        <button type="submit" class="btn primary">Tick (Hit)</button>
       </form>
       
       <form method="post" action="{{ url_for('game') }}" style="margin:0;">
         <input type="hidden" name="actie" value="snip">
-        <button type="submit" class="btn secondary">Snip</button>
+        <button type="submit" class="btn secondary">Snip (Stand)</button>
       </form>
     {% endif %}
     

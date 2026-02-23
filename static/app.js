@@ -1,0 +1,382 @@
+// WhiteJack - No Flash Version using fetch
+(function() {
+    'use strict';
+    
+    const ROLL_DURATION = 1500;  // Longer roll (was 600ms)
+    const SCROLL_SPEED = 80;     // Slower number changes (was 50ms)
+    
+    // Helper to show/hide totals
+    function showTotals(show) {
+        const playerTotal = document.querySelector('.player-slot .total');
+        const scarTotal = document.querySelector('.scar-slot .scar-total');
+        if (playerTotal) playerTotal.style.visibility = show ? 'visible' : 'hidden';
+        if (scarTotal) scarTotal.style.visibility = show ? 'visible' : 'hidden';
+    }
+    
+    function getPlayerRolls() { return document.getElementById('player-rolls'); }
+    function getScarRolls() { return document.getElementById('scar-rolls'); }
+    
+    // Helper to enable/disable buttons
+    function setButtonsEnabled(enabled) {
+        document.querySelectorAll('.actions button').forEach(btn => {
+            btn.disabled = !enabled;
+        });
+    }
+    
+    // Scroll a number element
+    function scrollNumber(element, duration = ROLL_DURATION) {
+        const interval = setInterval(() => {
+            element.textContent = Math.floor(Math.random() * 12) + 1;
+        }, SCROLL_SPEED);
+        
+        return new Promise(resolve => {
+            setTimeout(() => {
+                clearInterval(interval);
+                resolve();
+            }, duration);
+        });
+    }
+    
+    // Update game UI with new data (no page reload)
+    function updateGameUI(data) {
+        // Update player dice
+        const playerRolls = getPlayerRolls();
+        if (playerRolls && data.rolls) {
+            playerRolls.innerHTML = data.rolls.map(r => 
+                `<span class="card scar-roll" data-value="${r}">${r}</span>`
+            ).join('');
+        }
+        
+        // Update Scar dice
+        const scarRolls = getScarRolls();
+        if (scarRolls && data.scar_rolls) {
+            scarRolls.innerHTML = data.scar_rolls.map(r => 
+                `<span class="card scar-roll" data-value="${r}">${r}</span>`
+            ).join('');
+        }
+        
+        // Update totals
+        const playerTotalEl = document.querySelector('.player-slot .total');
+        if (playerTotalEl && data.player_total !== undefined) {
+            playerTotalEl.textContent = `Totaal: ${data.player_total}`;
+        }
+        
+        const scarTotalEl = document.querySelector('.scar-slot .scar-total');
+        if (scarTotalEl && data.scar_total !== undefined) {
+            scarTotalEl.textContent = `Totaal: ${data.scar_total}`;
+        }
+        
+        // Update game stage data attribute
+        const gameStage = document.querySelector('.game-stage');
+        if (gameStage) {
+            gameStage.dataset.initialDeal = data.is_initial_deal ? 'true' : 'false';
+        }
+        
+        // Handle game over
+        if (data.game_over) {
+            showGameOver(data);
+        }
+    }
+    
+    // Show game over state
+    function showGameOver(data) {
+        // Update title
+        const title = document.querySelector('.ronde-titel');
+        if (title) title.textContent = 'Uitslag';
+        
+        // Hide action buttons, show new game buttons
+        const actions = document.querySelector('.actions');
+        if (actions) {
+            actions.innerHTML = `
+                <a href="/reset" class="btn primary">Opnieuw spelen</a>
+                <a href="/" class="btn secondary">Home</a>
+            `;
+        }
+        
+        // Show result panel
+        let resultPanel = document.querySelector('.result-panel');
+        if (!resultPanel) {
+            resultPanel = document.createElement('div');
+            resultPanel.className = 'result-panel';
+            resultPanel.style.cssText = 'margin-top: 30px; text-align: center;';
+            document.querySelector('.game-stage').appendChild(resultPanel);
+        }
+        resultPanel.innerHTML = `
+            <div style="font-size: 24px; margin-bottom: 10px;">
+                <strong>${data.resultaat}</strong>
+            </div>
+            <div><strong>Jij:</strong> ${data.player_total}</div>
+            <div><strong>Scar:</strong> ${data.scar_total}</div>
+        `;
+        resultPanel.style.display = 'block';
+        
+        // Update money display
+        const moneyEl = document.querySelector('[style*="color:#4CAF50"]');
+        if (moneyEl && data.money !== undefined) {
+            moneyEl.textContent = '€' + data.money;
+        }
+    }
+    
+    // Submit action via fetch (no page reload)
+    async function submitAction(form) {
+        const formData = new FormData(form);
+        
+        try {
+            const response = await fetch('/game', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            
+            if (!response.ok) throw new Error('Request failed');
+            
+            return await response.json();
+        } catch (err) {
+            // Fallback to normal form submission on error
+            form.submit();
+            return null;
+        }
+    }
+    
+    // Handle player tick (hit)
+    async function handleTick(form) {
+        const playerRolls = getPlayerRolls();
+        if (!playerRolls) {
+            form.submit();
+            return;
+        }
+        
+        setButtonsEnabled(false);
+        showTotals(false); // Hide totals during roll
+        
+        // Add new die that scrolls
+        const newDie = document.createElement('span');
+        newDie.className = 'card scar-roll';
+        newDie.textContent = Math.floor(Math.random() * 12) + 1;
+        playerRolls.appendChild(newDie);
+        
+        // Scroll animation
+        await scrollNumber(newDie, ROLL_DURATION);
+        
+        // Submit and update
+        const data = await submitAction(form);
+        if (!data) {
+            showTotals(true);
+            setButtonsEnabled(true);
+            return;
+        }
+        
+        // If game over with Scar rolling, delay showing result
+        if (data.game_over && data.scar_rolls.length > 2) {
+            // Update UI but hide game over state
+            updateGameUI({...data, game_over: false});
+            showTotals(true);
+            
+            // Animate Scar's dice, then show result
+            await animateScarExtraDice(data.scar_rolls, () => {
+                showGameOver(data);
+            });
+        } else {
+            // Normal update
+            updateGameUI(data);
+            showTotals(true);
+            
+            // Re-enable buttons if game not over
+            if (!data.game_over) {
+                setButtonsEnabled(true);
+            }
+        }
+    }
+    
+    // Handle player cut (double down)
+    async function handleCut(form) {
+        const playerRolls = getPlayerRolls();
+        if (!playerRolls) {
+            form.submit();
+            return;
+        }
+        
+        setButtonsEnabled(false);
+        showTotals(false); // Hide totals during roll
+        
+        // Double the bet display
+        const betEl = document.querySelector('.player-slot .bet');
+        if (betEl) {
+            const currentBet = betEl.textContent.match(/\d+/)?.[0] || '0';
+            betEl.textContent = `Speler - Inzet: €${parseInt(currentBet) * 2}`;
+        }
+        
+        // Add new die that scrolls
+        const newDie = document.createElement('span');
+        newDie.className = 'card scar-roll';
+        newDie.textContent = Math.floor(Math.random() * 12) + 1;
+        playerRolls.appendChild(newDie);
+        
+        // Scroll animation
+        await scrollNumber(newDie, ROLL_DURATION);
+        
+        // Submit and update
+        const data = await submitAction(form);
+        if (data) {
+            updateGameUI(data);
+            showTotals(true); // Show totals after roll
+            
+            if (data.game_over && data.scar_rolls.length > 2) {
+                await animateScarExtraDice(data.scar_rolls);
+            }
+            
+            // Re-enable buttons if game not over
+            if (!data.game_over) {
+                setButtonsEnabled(true);
+            }
+        } else {
+            showTotals(true);
+            setButtonsEnabled(true);
+        }
+    }
+    
+    // Handle player snip (stand)
+    async function handleSnip(form) {
+        setButtonsEnabled(false);
+        showTotals(false); // Hide totals during Scar's roll
+        
+        // Submit and update (Scar's dice added but result hidden)
+        const data = await submitAction(form);
+        if (!data) {
+            showTotals(true);
+            setButtonsEnabled(true);
+            return;
+        }
+        
+        // Update dice but NOT the result panel yet
+        updateGameUI({...data, game_over: false}); // Temporarily hide game over
+        
+        // Animate Scar's extra dice one by one with progressive totals
+        if (data.scar_rolls.length > 2) {
+            await animateScarExtraDice(data.scar_rolls, () => {
+                // This callback runs after all dice finish
+                showGameOver(data);
+                showTotals(true);
+            });
+        } else {
+            // No extra dice, just show result
+            showGameOver(data);
+            showTotals(true);
+        }
+    }
+    
+    // Animate Scar's extra dice with progressive total updates
+    async function animateScarExtraDice(scarRollsData, gameOverCallback) {
+        const scarContainer = getScarRolls();
+        if (!scarContainer) return;
+        
+        const dice = scarContainer.querySelectorAll('.card.scar-roll');
+        const extraDice = Array.from(dice).slice(2);
+        
+        // Calculate running total (start with first 2 dice)
+        let runningTotal = 0;
+        const allDice = Array.from(dice);
+        if (allDice.length >= 2) {
+            const firstTwo = allDice.slice(0, 2);
+            runningTotal = firstTwo.reduce((sum, d) => {
+                const val = parseInt(d.dataset.value || d.textContent, 10);
+                return sum + (isNaN(val) ? 0 : val);
+            }, 0);
+        }
+        
+        // Animate each extra die and update total progressively
+        for (let i = 0; i < extraDice.length; i++) {
+            const die = extraDice[i];
+            await scrollNumber(die, 800); // Slightly longer for drama
+            
+            // Add this die's value to running total
+            const dieValue = parseInt(die.dataset.value || die.textContent, 10);
+            if (!isNaN(dieValue)) {
+                runningTotal += dieValue;
+            }
+            
+            // Update Scar's total display
+            const scarTotalEl = document.querySelector('.scar-slot .scar-total');
+            if (scarTotalEl) {
+                scarTotalEl.textContent = `Totaal: ${runningTotal}`;
+            }
+            
+            // Pause between dice
+            if (i < extraDice.length - 1) {
+                await new Promise(r => setTimeout(r, 300));
+            }
+        }
+        
+        // Now show the final result
+        if (gameOverCallback) {
+            gameOverCallback();
+        }
+    }
+    
+    // Animate initial deal
+    async function animateInitialDeal() {
+        // Hide totals during animation
+        showTotals(false);
+        
+        const playerDice = getPlayerRolls()?.querySelectorAll('.card.scar-roll');
+        const scarDice = getScarRolls()?.querySelectorAll('.card.scar-roll');
+        
+        const promises = [];
+        if (playerDice?.length === 2) {
+            playerDice.forEach(die => promises.push(scrollNumber(die, ROLL_DURATION)));
+        }
+        if (scarDice?.length === 2) {
+            scarDice.forEach(die => promises.push(scrollNumber(die, ROLL_DURATION)));
+        }
+        
+        // Wait for all dice to finish
+        await Promise.all(promises);
+        
+        // Show totals after animation
+        showTotals(true);
+    }
+    
+    // Setup forms
+    function setupForms() {
+        document.querySelectorAll('form[action*="game"]').forEach(form => {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const action = form.querySelector('input[name="actie"]')?.value;
+                
+                if (action === 'tick') await handleTick(form);
+                else if (action === 'cut') await handleCut(form);
+                else if (action === 'snip') await handleSnip(form);
+            });
+        });
+    }
+    
+    // Auto-hide flash messages after 5 seconds
+    function setupFlashMessages() {
+        const flashContainer = document.querySelector('.flash-messages');
+        if (flashContainer) {
+            setTimeout(() => {
+                flashContainer.style.opacity = '0';
+                setTimeout(() => flashContainer.remove(), 500);
+            }, 5000);
+        }
+    }
+    
+    // Init
+    function init() {
+        setupForms();
+        setupFlashMessages();
+        
+        const gameStage = document.querySelector('.game-stage');
+        if (gameStage?.dataset.initialDeal === 'true') {
+            // Hide totals initially, they'll show after animation
+            showTotals(false);
+            setTimeout(animateInitialDeal, 100);
+        }
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
