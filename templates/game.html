@@ -47,9 +47,7 @@
           {% endif %}
         </div>
         <div class="hand-meta">
-          {% if spel.scar_rolls %}
-            <span class="scar-total">Totaal: {{ scar_total }}</span>
-          {% endif %}
+          <span class="scar-total" style="display: {{ 'inline' if spel.scar_rolls else 'none' }};">Totaal: {{ scar_total }}</span>
         </div>
       </div>
     </div>
@@ -58,9 +56,7 @@
     <div class="table-slot player-slot">
       <div class="hand card-group">
         <div class="hand-meta">
-          {% if spel.rolls %}
-            <span class="total">Totaal: {{ player_total }}</span>
-          {% endif %}
+          <span class="total" style="display: {{ 'inline' if spel.rolls else 'none' }};">Totaal: {{ player_total }}</span>
         </div>
         <div class="rolls" id="player-rolls">
           {% for r in spel.rolls %}
@@ -83,7 +79,7 @@
     {# ACTIVE GAME: Tick, Snip, Cut #}
     {% if not spel.game_over %}
       {# Cut the Fuse - available anytime if not used yet #}
-      {% if not spel.cut_used %}
+      {% if not spel.cut_used and spel.rolls|length >= 2 %}
         <form method="post" action="{{ url_for('game') }}" style="margin:0;">
           <input type="hidden" name="actie" value="cut">
           <button type="submit" class="btn warn">Cut the Fuse (2x inzet)</button>
@@ -95,10 +91,12 @@
         <button type="submit" class="btn primary">Tick (Hit)</button>
       </form>
       
-      <form method="post" action="{{ url_for('game') }}" style="margin:0;">
-        <input type="hidden" name="actie" value="snip">
-        <button type="submit" class="btn secondary">Snip (Stand)</button>
-      </form>
+      {% if spel.rolls|length >= 2 %}
+        <form method="post" action="{{ url_for('game') }}" style="margin:0;">
+          <input type="hidden" name="actie" value="snip">
+          <button type="submit" class="btn secondary">Snip (Stand)</button>
+        </form>
+      {% endif %}
     {% endif %}
     
     {# GAME OVER #}

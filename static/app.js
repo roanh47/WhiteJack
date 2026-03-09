@@ -15,6 +15,40 @@
     
     function getPlayerRolls() { return document.getElementById('player-rolls'); }
     function getScarRolls() { return document.getElementById('scar-rolls'); }
+
+    function clearPlaceholder(container) {
+        container?.querySelector('.scar-placeholder')?.remove();
+    }
+
+    function buildActionForm(action, buttonClass, label) {
+        return `
+            <form method="post" action="/game" style="margin:0;">
+                <input type="hidden" name="actie" value="${action}">
+                <button type="submit" class="btn ${buttonClass}">${label}</button>
+            </form>
+        `;
+    }
+
+    function updateActionButtons(data) {
+        const actions = document.querySelector('.actions');
+        if (!actions || data.game_over) {
+            return;
+        }
+
+        const buttons = [];
+        if (!data.cut_used && (data.rolls?.length || 0) >= 2) {
+            buttons.push(buildActionForm('cut', 'warn', 'Cut the Fuse (2x inzet)'));
+        }
+
+        buttons.push(buildActionForm('tick', 'primary', 'Tick (Hit)'));
+
+        if ((data.rolls?.length || 0) >= 2) {
+            buttons.push(buildActionForm('snip', 'secondary', 'Snip (Stand)'));
+        }
+
+        actions.innerHTML = buttons.join('');
+        setupForms(actions);
+    }
     
     // Helper to enable/disable buttons
     function setButtonsEnabled(enabled) {
@@ -42,28 +76,35 @@
         // Update player dice
         const playerRolls = getPlayerRolls();
         if (playerRolls && data.rolls) {
-            playerRolls.innerHTML = data.rolls.map(r => 
-                `<span class="card scar-roll" data-value="${r}">${r}</span>`
-            ).join('');
+            playerRolls.innerHTML = data.rolls.length
+                ? data.rolls.map(r =>
+                    `<span class="card scar-roll" data-value="${r}">${r}</span>`
+                ).join('')
+                : '<span class="card scar-placeholder">?</span>';
         }
         
         // Update Scar dice
         const scarRolls = getScarRolls();
         if (scarRolls && data.scar_rolls) {
-            scarRolls.innerHTML = data.scar_rolls.map(r => 
-                `<span class="card scar-roll" data-value="${r}">${r}</span>`
-            ).join('');
+            scarRolls.innerHTML = data.scar_rolls.length
+                ? data.scar_rolls.map(r =>
+                    `<span class="card scar-roll" data-value="${r}">${r}</span>`
+                ).join('')
+                : '<span class="card scar-placeholder">?</span>';
+            scarRolls.dataset.count = data.scar_rolls.length;
         }
         
         // Update totals
         const playerTotalEl = document.querySelector('.player-slot .total');
         if (playerTotalEl && data.player_total !== undefined) {
             playerTotalEl.textContent = `Totaal: ${data.player_total}`;
+            playerTotalEl.style.display = data.rolls?.length ? 'inline' : 'none';
         }
         
         const scarTotalEl = document.querySelector('.scar-slot .scar-total');
         if (scarTotalEl && data.scar_total !== undefined) {
             scarTotalEl.textContent = `Totaal: ${data.scar_total}`;
+            scarTotalEl.style.display = data.scar_rolls?.length ? 'inline' : 'none';
         }
         
         // Update game stage data attribute
@@ -71,6 +112,8 @@
         if (gameStage) {
             gameStage.dataset.initialDeal = data.is_initial_deal ? 'true' : 'false';
         }
+
+        updateActionButtons(data);
         
         // Handle game over
         if (data.game_over) {
@@ -141,20 +184,62 @@
     // Handle player tick (hit)
     async function handleTick(form) {
         const playerRolls = getPlayerRolls();
+        const scarRolls = getScarRolls();
         if (!playerRolls) {
             form.submit();
             return;
         }
-        
+
+        const isOpeningDeal =
+            playerRolls.querySelectorAll('.card.scar-roll').length === 0 &&
+            scarRolls?.querySelectorAll('.card.scar-roll').length === 0;
+
+        // Play velvet shuffle mp3 on first tick
+        if (!window._velvetShufflePlayed) {
+            window._velvetShufflePlayed = true;
+            try {
+                let audio = document.getElementById('velvet-shuffle-audio');
+                if (!audio) {
+                    audio = document.createElement('audio');
+                    audio.id = 'velvet-shuffle-audio';
+                    audio.src = '/static/media/Velvet Shuffle.mp3';
+                    audio.preload = 'auto';
+                    document.body.appendChild(audio);
+                }
+                audio.currentTime = 0;
+                audio.play();
+            } catch (e) { /* ignore playback errors */ }
+        }
+
         setButtonsEnabled(false);
         showTotals(false); // Hide totals during roll
-        
+
+        if (isOpeningDeal) {
+            const data = await submitAction(form);
+            if (!data) {
+                showTotals(true);
+                setButtonsEnabled(true);
+                return;
+            }
+
+            updateGameUI({...data, game_over: false});
+            await animateInitialDeal();
+
+            if (data.game_over) {
+                showGameOver(data);
+            } else {
+                setButtonsEnabled(true);
+            }
+            return;
+        }
+
         // Add new die that scrolls
+        clearPlaceholder(playerRolls);
         const newDie = document.createElement('span');
         newDie.className = 'card scar-roll';
         newDie.textContent = Math.floor(Math.random() * 12) + 1;
         playerRolls.appendChild(newDie);
-        
+
         // Scroll animation
         await scrollNumber(newDie, ROLL_DURATION);
         
@@ -207,6 +292,7 @@
         }
         
         // Add new die that scrolls
+        clearPlaceholder(playerRolls);
         const newDie = document.createElement('span');
         newDie.className = 'card scar-roll';
         newDie.textContent = Math.floor(Math.random() * 12) + 1;
@@ -216,22 +302,29 @@
         await scrollNumber(newDie, ROLL_DURATION);
         
         // Submit and update
+        const previousScarCount = getScarRolls()?.querySelectorAll('.card.scar-roll').length || 0;
         const data = await submitAction(form);
-        if (data) {
+        if (!data) {
+            showTotals(true);
+            setButtonsEnabled(true);
+            return;
+        }
+
+        if (data.game_over && data.scar_rolls.length > previousScarCount) {
+            updateGameUI({...data, game_over: false});
+            showTotals(true);
+
+            await animateScarExtraDice(data.scar_rolls, () => {
+                showGameOver(data);
+            }, previousScarCount);
+        } else {
             updateGameUI(data);
             showTotals(true); // Show totals after roll
-            
-            if (data.game_over && data.scar_rolls.length > 2) {
-                await animateScarExtraDice(data.scar_rolls);
-            }
-            
+
             // Re-enable buttons if game not over
             if (!data.game_over) {
                 setButtonsEnabled(true);
             }
-        } else {
-            showTotals(true);
-            setButtonsEnabled(true);
         }
     }
     
@@ -241,6 +334,7 @@
         showTotals(false); // Hide totals during Scar's roll
         
         // Submit and update (Scar's dice added but result hidden)
+        const previousScarCount = getScarRolls()?.querySelectorAll('.card.scar-roll').length || 0;
         const data = await submitAction(form);
         if (!data) {
             showTotals(true);
@@ -252,12 +346,12 @@
         updateGameUI({...data, game_over: false}); // Temporarily hide game over
         
         // Animate Scar's extra dice one by one with progressive totals
-        if (data.scar_rolls.length > 2) {
+        if (data.scar_rolls.length > previousScarCount) {
             await animateScarExtraDice(data.scar_rolls, () => {
                 // This callback runs after all dice finish
                 showGameOver(data);
                 showTotals(true);
-            });
+            }, previousScarCount);
         } else {
             // No extra dice, just show result
             showGameOver(data);
@@ -266,19 +360,19 @@
     }
     
     // Animate Scar's extra dice with progressive total updates
-    async function animateScarExtraDice(scarRollsData, gameOverCallback) {
+    async function animateScarExtraDice(scarRollsData, gameOverCallback, existingDiceCount = 2) {
         const scarContainer = getScarRolls();
         if (!scarContainer) return;
         
         const dice = scarContainer.querySelectorAll('.card.scar-roll');
-        const extraDice = Array.from(dice).slice(2);
+        const extraDice = Array.from(dice).slice(existingDiceCount);
         
-        // Calculate running total (start with first 2 dice)
+        // Calculate running total from dice that were already visible before this action.
         let runningTotal = 0;
         const allDice = Array.from(dice);
-        if (allDice.length >= 2) {
-            const firstTwo = allDice.slice(0, 2);
-            runningTotal = firstTwo.reduce((sum, d) => {
+        if (existingDiceCount > 0) {
+            const existingDice = allDice.slice(0, existingDiceCount);
+            runningTotal = existingDice.reduce((sum, d) => {
                 const val = parseInt(d.dataset.value || d.textContent, 10);
                 return sum + (isNaN(val) ? 0 : val);
             }, 0);
@@ -337,8 +431,13 @@
     }
     
     // Setup forms
-    function setupForms() {
-        document.querySelectorAll('form[action*="game"]').forEach(form => {
+    function setupForms(root = document) {
+        root.querySelectorAll('form[action*="game"]').forEach(form => {
+            if (form.dataset.jsBound === 'true') {
+                return;
+            }
+
+            form.dataset.jsBound = 'true';
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const action = form.querySelector('input[name="actie"]')?.value;

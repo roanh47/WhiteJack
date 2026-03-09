@@ -126,39 +126,15 @@ def start():
         flash('Je hebt niet genoeg geld!', 'error')
         return redirect(url_for('lobby'))
     
-    # Start spel - roll initial 2d12 for both player and Scar
-    player_rolls = [rol_d12(), rol_d12()]
-    scar_rolls = [rol_d12(), rol_d12()]
-    
-    # Check for Whitejack (24 on initial roll)
-    player_total = sum(player_rolls)
-    scar_total = sum(scar_rolls)
-    
-    resultaat = None
-    game_over = False
-    
-    if player_total == 24 and scar_total == 24:
-        resultaat = 'Gelijkspel! Jullie hebben allebei Whitejack!'
-        game_over = True
-        flash('Gelijkspel - je krijgt je inzet terug', 'info')
-    elif player_total == 24:
-        resultaat = 'Whitejack! Je wint!'
-        game_over = True
-        win_money(bet * 2)
-    elif scar_total == 24:
-        resultaat = 'Scar heeft Whitejack! Je verliest.'
-        game_over = True
-        lose_money(bet)
-    
     # Start spel
     session['spel'] = {
         'bet': bet,
-        'rolls': player_rolls,
-        'scar_rolls': scar_rolls,
+        'rolls': [],
+        'scar_rolls': [],
         'cut_used': False,
-        'resultaat': resultaat,
-        'game_over': game_over,
-        'player_done': game_over  # Player is done if game ended on initial deal
+        'resultaat': None,
+        'game_over': False,
+        'player_done': False
     }
     
     return redirect(url_for('game'))
@@ -167,7 +143,7 @@ def start():
 @app.route('/game', methods=['GET', 'POST'])
 @login_required
 def game():
-    """Het spel zelf - Blackjack style"""
+    """Het spel zelf"""
     
     if request.method == 'POST':
         actie = request.form.get('actie')
@@ -176,49 +152,38 @@ def game():
         if not spel or spel.get('game_over'):
             return redirect(url_for('lobby'))
         
-        player_total = sum(spel['rolls'])
-        
-        # TICK: Roll another d12
+        # TICK: first tick performs the initial 2d12 opening deal, later ticks add 1 die.
         if actie == 'tick':
-            spel['rolls'].append(rol_d12())
-            player_total = sum(spel['rolls'])
-            
-            # Check for bust
-            if player_total > 24:
-                spel['resultaat'] = 'Bust! Je bent over 24.'
-                spel['game_over'] = True
-                spel['player_done'] = True
-                lose_money(spel['bet'])
-            # Check for 6 dice auto-win
-            elif len(spel['rolls']) >= 6:
-                spel['resultaat'] = '6 dice! Auto-win!'
-                spel['game_over'] = True
-                spel['player_done'] = True
-                win_money(spel['bet'] * 2)
+            if not openingsworp_gedaan(spel):
+                doe_openingsworp(spel)
+                verwerk_openingsworp(spel)
+            else:
+                spel['rolls'].append(rol_d12())
+
+            if not spel['game_over']:
+                verwerk_speler_totaal(spel)
         
         # SNIP: Stand, let Scar play
         elif actie == 'snip':
-            spel['player_done'] = True
-            bepaal_winaar(spel)
-            spel['game_over'] = True
+            if not openingsworp_gedaan(spel):
+                flash('Je moet eerst je openingsworp doen.', 'error')
+            else:
+                spel['player_done'] = True
+                bepaal_winaar(spel)
+                spel['game_over'] = True
         
         # CUT: Double down, roll exactly 1 more, then stand
         elif actie == 'cut':
             if spel['cut_used']:
                 flash('Cut the Fuse is al gebruikt!', 'error')
+            elif not openingsworp_gedaan(spel):
+                flash('Cut the Fuse kan pas na je eerste twee ticks.', 'error')
             else:
                 spel['cut_used'] = True
                 spel['bet'] *= 2
                 spel['rolls'].append(rol_d12())
-                player_total = sum(spel['rolls'])
-                
-                # Check for bust after cut
-                if player_total > 24:
-                    spel['resultaat'] = 'Bust! Je bent over 24.'
-                    spel['game_over'] = True
-                    spel['player_done'] = True
-                    lose_money(spel['bet'])
-                else:
+
+                if not verwerk_speler_totaal(spel):
                     # Cut always ends player's turn
                     spel['player_done'] = True
                     bepaal_winaar(spel)
@@ -288,6 +253,58 @@ def lose_money(amount):
 def rol_d12():
     """Rol een d12"""
     return random.randint(1, 12)
+
+
+def openingsworp_gedaan(spel):
+    """Check of de eerste worp voor speler en Scar al is gedaan."""
+    return len(spel['rolls']) >= 2 and len(spel['scar_rolls']) >= 2
+
+
+def beeindig_spel(spel, resultaat, bedrag=None, uitkomst=None):
+    """Zet de eindstatus van het spel en verwerkt winst/verlies."""
+    spel['resultaat'] = resultaat
+    spel['game_over'] = True
+    spel['player_done'] = True
+
+    if uitkomst == 'win' and bedrag is not None:
+        win_money(bedrag)
+    elif uitkomst == 'lose' and bedrag is not None:
+        lose_money(bedrag)
+
+
+def doe_openingsworp(spel):
+    """Geef speler en Scar hun eerste twee dobbelstenen."""
+    spel['rolls'] = [rol_d12(), rol_d12()]
+    spel['scar_rolls'] = [rol_d12(), rol_d12()]
+
+
+def verwerk_openingsworp(spel):
+    """Verwerk directe Whitejack-resultaten van de openingsworp."""
+    player_total = sum(spel['rolls'])
+    scar_total = sum(spel['scar_rolls'])
+
+    if player_total == 24 and scar_total == 24:
+        beeindig_spel(spel, 'Gelijkspel! Jullie hebben allebei Whitejack!')
+        flash('Gelijkspel - je krijgt je inzet terug', 'info')
+    elif player_total == 24:
+        beeindig_spel(spel, 'Whitejack! Je wint!', spel['bet'] * 2, 'win')
+    elif scar_total == 24:
+        beeindig_spel(spel, 'Scar heeft Whitejack! Je verliest.', spel['bet'], 'lose')
+
+
+def verwerk_speler_totaal(spel):
+    """Controleer of de speler bust gaat of automatisch wint."""
+    player_total = sum(spel['rolls'])
+
+    if player_total > 24:
+        beeindig_spel(spel, 'Bust! Je bent over 24.', spel['bet'], 'lose')
+        return True
+
+    if len(spel['rolls']) >= 6:
+        beeindig_spel(spel, '6 dice! Auto-win!', spel['bet'] * 2, 'win')
+        return True
+
+    return False
 
 
 def scar_speelt_uit(spel):
