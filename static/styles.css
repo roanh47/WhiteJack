@@ -95,7 +95,7 @@ input[type=number]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,2
   left:50%;
   transform:translateX(-50%);
   aspect-ratio:2048 / 1463;
-  background-image:url('/static/media/game/tafel.png');
+  background-image:url('/static/media/game/tafelv2.png');
   background-size:contain;
   background-repeat:no-repeat;
   background-position:center;
