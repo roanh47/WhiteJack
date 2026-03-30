@@ -244,7 +244,11 @@ def lose_money(amount):
     """Haal verlies af van gebruiker"""
     current_user.money -= amount
     db.session.commit()
-    flash(f'Je verliest €{amount}', 'error')
+    flash(
+        f'Je hebt de vorige ronde {amount} euro verloren. '
+        '99% van alle ex-gokkers zijn gestopt voor het winnen van de jackpot.',
+        'error'
+    )
 
 
 # =============================================================================

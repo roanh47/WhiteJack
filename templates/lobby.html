@@ -1,36 +1,45 @@
 {% extends 'layout.html' %}
+{% block body_class %}lobby-page{% endblock %}
 {% block body %}
 
-<div style="display:flex;flex-direction:column;align-items:center;margin-top:60px;">
-  <h2 style="font-size:32px;margin-bottom:8px;">Welkom, {{ user.username }}!</h2>
-  
-  <div style="font-size:48px;color:#4CAF50;margin-bottom:24px;">
-    €{{ user.money }}
-  </div>
-  
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div style="padding:12px 24px;margin-bottom:16px;border-radius:8px;background:{% if category == 'error' %}#f44336{% elif category == 'success' %}#4CAF50{% else %}#333{% endif %};color:white;">
-          {{ message }}
-        </div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-  
-  <div style="background:rgba(255,255,255,0.04);padding:32px;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,0.2);text-align:center;">
-    <h3 style="margin-bottom:16px;">Start een nieuw spel</h3>
-    
-    <form method="post" action="{{ url_for('start') }}" style="display:flex;flex-direction:column;gap:16px;align-items:center;">
-      <label style="font-size:18px;">Inzet: €
-        <input type="number" name="bet" value="10" min="1" max="{{ user.money }}" style="padding:10px;border-radius:8px;border:1px solid #444;background:#222;color:#fff;margin-left:8px;width:100px;font-size:18px;">
-      </label>
-      <button type="submit" class="btn primary" style="font-size:20px;padding:14px 40px;">Speel WhiteJack!</button>
-    </form>
-    
-    <div style="margin-top:24px;padding-top:24px;border-top:1px solid #444;">
-      <a href="{{ url_for('logout') }}" class="btn secondary">Uitloggen</a>
+<div class="lobby-shell">
+  <div class="lobby-copy">
+    <p class="auth-eyebrow">Welcome Back To The Table</p>
+    <h2>Welkom, {{ user.username }}</h2>
+    <p class="lobby-intro">Kies je inzet en start direct een nieuwe ronde WhiteJack.</p>
+    <div class="lobby-balance-card">
+      <span class="lobby-balance-label">Beschikbaar saldo</span>
+      <span class="lobby-balance-amount">€{{ user.money }}</span>
     </div>
+  </div>
+
+  <div class="auth-card lobby-card">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="auth-messages">
+          {% for category, message in messages %}
+            <div class="auth-message auth-message-{{ category }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <section class="lobby-panel">
+      <h3>Start een nieuw spel</h3>
+      <p>Zet slim in, blijf onder 24 en versla Scar.</p>
+
+      <form method="post" action="{{ url_for('start') }}" class="lobby-form">
+        <label for="bet" class="lobby-bet-label">Inzet (€)</label>
+        <input id="bet" type="number" name="bet" value="10" min="1" max="{{ user.money }}" required>
+        <button type="submit" class="btn primary auth-submit">Speel WhiteJack!</button>
+      </form>
+
+      <div class="lobby-divider"></div>
+
+      <a href="{{ url_for('logout') }}" class="btn secondary lobby-logout">Uitloggen</a>
+    </section>
   </div>
 </div>
 
