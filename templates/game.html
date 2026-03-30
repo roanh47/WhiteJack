@@ -31,6 +31,12 @@
   </div>
 </div>
 
+{% if spel.game_over %}
+<div class="result-popup" id="result-popup">
+  <p class="result-popup-text">{{ spel.resultaat }}</p>
+</div>
+{% endif %}
+
 <div class="game-stage{% if spel.game_over %} game-over{% endif %}" data-initial-deal="{{ 'true' if is_initial_deal else 'false' }}">
   
   {# Titel #}

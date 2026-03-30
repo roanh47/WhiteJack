@@ -212,6 +212,15 @@
                 <a href="/" class="btn secondary">Home</a>
             `;
         }
+
+        // Show result popup
+        if (!document.getElementById('result-popup')) {
+            const popup = document.createElement('div');
+            popup.id = 'result-popup';
+            popup.className = 'result-popup';
+            popup.innerHTML = `<p class="result-popup-text">${data.resultaat}</p>`;
+            document.body.appendChild(popup);
+        }
         
         // Update money display
         const moneyEl = document.querySelector('[style*="color:#4CAF50"]');
