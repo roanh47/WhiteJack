@@ -50,6 +50,7 @@
         audio.preload = 'auto';
 
         function loadTrack(i) {
+            audio.pause();
             index = ((i % shuffled.length) + shuffled.length) % shuffled.length;
             const track = shuffled[index];
             const { title, artist } = parseTrack(track);

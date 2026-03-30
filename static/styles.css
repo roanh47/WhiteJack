@@ -485,6 +485,9 @@ body.game-page .actions .btn{
   overflow:hidden;
   text-overflow:ellipsis;
 }
+#music-next{
+  margin-left:auto;
+}
 .game-balance-card{
   margin-top:0;
   min-width:160px;
