@@ -480,14 +480,15 @@ body.game-page .actions .btn{
 }
 .game-balance-card{
   margin-top:0;
-  min-width:200px;
-  max-width:260px;
+  min-width:160px;
+  max-width:min(calc(100vw - 40px), 400px);
 }
 .game-balance-card .lobby-balance-label{
   color:#f3d69a;
 }
 .game-balance-card .lobby-balance-amount{
-  font-size:1.6rem;
+  font-size:clamp(1rem, 2.5vw, 1.6rem);
+  word-break:break-all;
 }
 .lobby-card{
   padding:24px;

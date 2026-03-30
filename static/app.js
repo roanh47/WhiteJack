@@ -50,7 +50,8 @@
         audio.preload = 'auto';
 
         function loadTrack(i) {
-            const track = shuffled[i % shuffled.length];
+            index = ((i % shuffled.length) + shuffled.length) % shuffled.length;
+            const track = shuffled[index];
             const { title, artist } = parseTrack(track);
             audio.src = '/static/media/' + encodeURIComponent(track);
             document.getElementById('music-title').textContent = title;
@@ -58,32 +59,10 @@
             audio.play().catch(() => {});
         }
 
-        audio.addEventListener('ended', () => {
-            index++;
-            loadTrack(index);
-        });
+        audio.addEventListener('ended', () => loadTrack(index + 1));
 
-        const toggleBtn = document.getElementById('music-toggle');
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', () => {
-                if (audio.paused) {
-                    audio.play().catch(() => {});
-                    toggleBtn.textContent = '⏸';
-                } else {
-                    audio.pause();
-                    toggleBtn.textContent = '▶';
-                }
-            });
-        }
-
-        audio.addEventListener('play', () => {
-            const btn = document.getElementById('music-toggle');
-            if (btn) btn.textContent = '⏸';
-        });
-        audio.addEventListener('pause', () => {
-            const btn = document.getElementById('music-toggle');
-            if (btn) btn.textContent = '▶';
-        });
+        document.getElementById('music-next')?.addEventListener('click', () => loadTrack(index + 1));
+        document.getElementById('music-prev')?.addEventListener('click', () => loadTrack(index - 1));
 
         loadTrack(0);
     }
