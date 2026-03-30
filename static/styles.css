@@ -51,8 +51,8 @@ h1{font-size:28px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
 .hand-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .bet{color:var(--accent);font-weight:600}
 .rolls{display:flex;gap:10px;align-items:center}
-.card{display:inline-flex;align-items:center;justify-content:center;padding:14px 18px;border-radius:10px;background:linear-gradient(180deg,#071226,#0b2236);border:1px solid rgba(255,255,255,0.04);min-width:48px;color:var(--accent);font-weight:700;box-shadow:inset 0 -6px 12px rgba(0,0,0,0.4)}
-.dice,.scar-roll{font-size:20px;background:linear-gradient(180deg,#0b2030,#082033);color:#fff}
+.card{display:inline-flex;align-items:center;justify-content:center;padding:clamp(8px,1vw,14px) clamp(10px,1.3vw,18px);border-radius:10px;background:linear-gradient(180deg,#071226,#0b2236);border:1px solid rgba(255,255,255,0.04);min-width:clamp(32px,3.5vw,48px);color:var(--accent);font-weight:700;box-shadow:inset 0 -6px 12px rgba(0,0,0,0.4)}
+.dice,.scar-roll{font-size:clamp(12px,1.5vw,20px);background:linear-gradient(180deg,#0b2030,#082033);color:#fff}
 .roll-display{min-width:78px;background:linear-gradient(90deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));color:var(--accent);font-size:20px}
 .scar-placeholder{min-width:78px;background:linear-gradient(90deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));color:var(--accent);font-size:20px}
 .scar{background:linear-gradient(180deg,#0b2030,#082033);color:#fff}
@@ -151,10 +151,10 @@ input[type=number]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,2
   align-items:center;
 }
 .scar-slot{
-  top:27%;
+  top:20%;
 }
 .player-slot{
-  bottom:27%;
+  bottom:20%;
 }
 .table-slot .card-group{
   width:100%;
@@ -190,11 +190,13 @@ body.game-page .table-slot .hand-meta{
   text-align:center;
   font-size:1.3rem;
 }
-body.game-page .scar-slot .hand-header{
+body.game-page .scar-slot .hand-meta{
+  margin-top:4px;
   margin-bottom:8px;
 }
-body.game-page .player-slot .hand-header{
+body.game-page .player-slot .hand-meta{
   margin-top:8px;
+  margin-bottom:4px;
 }
 .total,.scar-total{
   font-variant-numeric:tabular-nums;
