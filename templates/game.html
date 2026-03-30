@@ -49,6 +49,9 @@
     <div class="table-slot scar-slot">
       <div class="hand card-group">
         <div class="hand-header"><span class="bet">Scar</span></div>
+        <div class="hand-meta">
+          <span class="scar-total" style="display: {{ 'inline' if spel.scar_rolls else 'none' }};">Totaal: {{ scar_total }}</span>
+        </div>
         <div class="rolls" id="scar-rolls" data-count="{{ spel.scar_rolls|length }}">
           {% for c in spel.scar_rolls %}
             <span class="card scar-roll" data-value="{{ c }}">{{ c }}</span>
@@ -57,18 +60,12 @@
             <span class="card scar-placeholder">?</span>
           {% endif %}
         </div>
-        <div class="hand-meta">
-          <span class="scar-total" style="display: {{ 'inline' if spel.scar_rolls else 'none' }};">Totaal: {{ scar_total }}</span>
-        </div>
       </div>
     </div>
 
     {# SPELER #}
     <div class="table-slot player-slot">
       <div class="hand card-group">
-        <div class="hand-meta">
-          <span class="total" style="display: {{ 'inline' if spel.rolls else 'none' }};">Totaal: {{ player_total }}</span>
-        </div>
         <div class="rolls" id="player-rolls">
           {% for r in spel.rolls %}
             <span class="card scar-roll" data-value="{{ r }}">{{ r }}</span>
@@ -79,6 +76,9 @@
         </div>
         <div class="hand-header">
           <span class="bet">Speler - Inzet: €{{ spel.bet }}</span>
+        </div>
+        <div class="hand-meta">
+          <span class="total" style="display: {{ 'inline' if spel.rolls else 'none' }};">Totaal: {{ player_total }}</span>
         </div>
       </div>
     </div>
