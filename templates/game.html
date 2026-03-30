@@ -15,12 +15,22 @@
   {% endif %}
 {% endwith %}
 
-<div style="position:absolute;top:20px;right:20px;text-align:right;">
-  <div style="font-size:14px;color:#aaa;">{{ user.username }}</div>
-  <div style="font-size:24px;color:#4CAF50;">€{{ user.money }}</div>
+<div class="music-player" id="music-player">
+  <span class="music-player-icon" id="music-toggle">⏸</span>
+  <div class="music-player-info">
+    <span class="music-player-title" id="music-title">—</span>
+    <span class="music-player-artist" id="music-artist">—</span>
+  </div>
 </div>
 
-<div class="game-stage" data-initial-deal="{{ 'true' if is_initial_deal else 'false' }}">
+<div class="game-balance-wrap">
+  <div class="lobby-balance-card game-balance-card">
+    <span class="lobby-balance-label">{{ user.username }}</span>
+    <span class="lobby-balance-amount">€{{ user.money }}</span>
+  </div>
+</div>
+
+<div class="game-stage{% if spel.game_over %} game-over{% endif %}" data-initial-deal="{{ 'true' if is_initial_deal else 'false' }}">
   
   {# Titel #}
   <h2 class="ronde-titel">
@@ -109,12 +119,10 @@
 
   {# RESULTAAT #}
   {% if spel.game_over %}
-  <div class="result-panel" style="margin-bottom: 100px; text-align: center;">
+  <div class="result-panel game-result-panel">
     <div style="font-size: 24px; margin-bottom: 10px;">
       <strong>{{ spel.resultaat }}</strong>
     </div>
-    <div><strong>Jij:</strong> {{ player_total }}</div>
-    <div><strong>Scar:</strong> {{ scar_total }}</div>
   </div>
   {% endif %}
 

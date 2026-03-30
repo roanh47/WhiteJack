@@ -28,6 +28,66 @@
         document.body.appendChild(script);
     }
     
+    const TRACKS = [
+        'Velvet Shuffle - Roan.mp3',
+        'Velvet Winnings - Thijs.mp3'
+    ];
+
+    function parseTrack(filename) {
+        const name = filename.replace('.mp3', '');
+        const sep = name.indexOf(' - ');
+        if (sep !== -1) {
+            return { title: name.slice(0, sep), artist: name.slice(sep + 3) };
+        }
+        return { title: name, artist: '' };
+    }
+
+    function startMusicPlayer() {
+        const shuffled = TRACKS.slice().sort(() => Math.random() - 0.5);
+        let index = 0;
+
+        const audio = new Audio();
+        audio.preload = 'auto';
+
+        function loadTrack(i) {
+            const track = shuffled[i % shuffled.length];
+            const { title, artist } = parseTrack(track);
+            audio.src = '/static/media/' + encodeURIComponent(track);
+            document.getElementById('music-title').textContent = title;
+            document.getElementById('music-artist').textContent = artist;
+            audio.play().catch(() => {});
+        }
+
+        audio.addEventListener('ended', () => {
+            index++;
+            loadTrack(index);
+        });
+
+        const toggleBtn = document.getElementById('music-toggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                if (audio.paused) {
+                    audio.play().catch(() => {});
+                    toggleBtn.textContent = '⏸';
+                } else {
+                    audio.pause();
+                    toggleBtn.textContent = '▶';
+                }
+            });
+        }
+
+        audio.addEventListener('play', () => {
+            const btn = document.getElementById('music-toggle');
+            if (btn) btn.textContent = '⏸';
+        });
+        audio.addEventListener('pause', () => {
+            const btn = document.getElementById('music-toggle');
+            if (btn) btn.textContent = '▶';
+        });
+
+        loadTrack(0);
+    }
+
     // Helper to show/hide totals
     function showTotals(show) {
         const playerTotal = document.querySelector('.player-slot .total');
@@ -235,21 +295,10 @@
             playerRolls.querySelectorAll('.card.scar-roll').length === 0 &&
             scarRolls?.querySelectorAll('.card.scar-roll').length === 0;
 
-        // Play velvet shuffle mp3 on first tick
-        if (!window._velvetShufflePlayed) {
-            window._velvetShufflePlayed = true;
-            try {
-                let audio = document.getElementById('velvet-shuffle-audio');
-                if (!audio) {
-                    audio = document.createElement('audio');
-                    audio.id = 'velvet-shuffle-audio';
-                    audio.src = '/static/media/Velvet Shuffle.mp3';
-                    audio.preload = 'auto';
-                    document.body.appendChild(audio);
-                }
-                audio.currentTime = 0;
-                audio.play();
-            } catch (e) { /* ignore playback errors */ }
+        // Start music on first interaction
+        if (!window._musicStarted) {
+            window._musicStarted = true;
+            startMusicPlayer();
         }
 
         lockActionUI();

@@ -441,6 +441,48 @@ body.game-page .actions .btn{
   right:20px;
   z-index:9000;
 }
+.music-player{
+  position:fixed;
+  top:20px;
+  left:20px;
+  z-index:9000;
+  background:rgba(10,18,35,0.85);
+  border:1px solid rgba(243,214,154,0.25);
+  border-radius:14px;
+  padding:10px 16px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  backdrop-filter:blur(8px);
+  min-width:220px;
+  max-width:300px;
+}
+.music-player-icon{
+  font-size:1.4rem;
+  flex-shrink:0;
+  cursor:pointer;
+  user-select:none;
+}
+.music-player-info{
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.music-player-title{
+  color:#f3d69a;
+  font-size:0.8rem;
+  font-weight:700;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.music-player-artist{
+  color:#aaa;
+  font-size:0.7rem;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
 .game-balance-card{
   margin-top:0;
   min-width:200px;
