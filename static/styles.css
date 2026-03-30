@@ -126,6 +126,7 @@ input[type=number]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,2
   background-position:center;
   position:relative;
   max-height: calc(100vh - 180px);
+  flex-shrink: 1;
 }
 .tafel-logo{
   position:absolute;
@@ -241,10 +242,11 @@ body.game-page .actions .btn{
 }
 .game-result-panel{
   width:min(520px, calc(100vw - 32px));
-  margin:12px auto 0 auto;
+  margin:8px auto 0 auto;
+  padding:10px 18px;
   background:rgba(0,0,0,0.62);
   border:1px solid rgba(255,255,255,0.12);
-  box-shadow:0 16px 40px rgba(0,0,0,0.45);
+  box-shadow:0 8px 20px rgba(0,0,0,0.45);
   backdrop-filter:blur(4px);
 }
 .result-actions{

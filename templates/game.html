@@ -36,7 +36,7 @@
   {# Titel #}
   <h2 class="ronde-titel">
     {% if spel.game_over %}
-      Uitslag
+      {{ spel.resultaat }}
     {% else %}
       Jouw Beurt
     {% endif %}
@@ -48,9 +48,9 @@
     {# SCAR #}
     <div class="table-slot scar-slot">
       <div class="hand card-group">
-        <div class="hand-header">
-          <span class="bet">Scar</span>
-          <span class="scar-total" style="display: {{ 'inline' if spel.scar_rolls else 'none' }};">— Totaal: {{ scar_total }}</span>
+        <div class="hand-header"><span class="bet">Scar</span></div>
+        <div class="hand-meta">
+          <span class="scar-total" style="display: {{ 'inline' if spel.scar_rolls else 'none' }};">Totaal: {{ scar_total }}</span>
         </div>
         <div class="rolls" id="scar-rolls" data-count="{{ spel.scar_rolls|length }}">
           {% for c in spel.scar_rolls %}
@@ -74,22 +74,15 @@
             <span class="card scar-placeholder">?</span>
           {% endif %}
         </div>
+        <div class="hand-meta">
+          <span class="total" style="display: {{ 'inline' if spel.rolls else 'none' }};">Totaal: {{ player_total }}</span>
+        </div>
         <div class="hand-header">
           <span class="bet">Speler - Inzet: €{{ spel.bet }}</span>
-          <span class="total" style="display: {{ 'inline' if spel.rolls else 'none' }};">— Totaal: {{ player_total }}</span>
         </div>
       </div>
     </div>
   </div>
-
-  {# RESULTAAT #}
-  {% if spel.game_over %}
-  <div class="result-panel game-result-panel">
-    <div style="font-size: 24px; margin-bottom: 10px;">
-      <strong>{{ spel.resultaat }}</strong>
-    </div>
-  </div>
-  {% endif %}
 
   {# ACTIE KNOPPEN - Blackjack style #}
   <div class="actions" style="display:flex; flex-direction:row; gap:12px; align-items:center; justify-content:center; margin-top: 20px;">

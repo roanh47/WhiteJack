@@ -200,10 +200,10 @@
             gameStage.classList.add('game-over');
         }
 
-        // Update title
+        // Show result in title
         const title = document.querySelector('.ronde-titel');
-        if (title) title.textContent = 'Uitslag';
-        
+        if (title) title.textContent = data.resultaat;
+
         // Hide action buttons, show new game buttons
         const actions = document.querySelector('.actions');
         if (actions) {
@@ -212,27 +212,6 @@
                 <a href="/" class="btn secondary">Home</a>
             `;
         }
-        
-        // Show result panel (insert before actions, after table)
-        let resultPanel = document.querySelector('.result-panel');
-        if (!resultPanel) {
-            resultPanel = document.createElement('div');
-            resultPanel.className = 'result-panel game-result-panel';
-            const actionsDiv = gameStage?.querySelector('.actions');
-            if (actionsDiv) {
-                gameStage.insertBefore(resultPanel, actionsDiv);
-            } else {
-                gameStage?.appendChild(resultPanel);
-            }
-        } else {
-            resultPanel.classList.add('game-result-panel');
-        }
-        resultPanel.innerHTML = `
-            <div style="font-size: 24px; margin-bottom: 10px;">
-                <strong>${data.resultaat}</strong>
-            </div>
-        `;
-        resultPanel.style.display = 'block';
         
         // Update money display
         const moneyEl = document.querySelector('[style*="color:#4CAF50"]');
