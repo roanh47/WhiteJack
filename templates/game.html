@@ -83,9 +83,18 @@
     </div>
   </div>
 
+  {# RESULTAAT #}
+  {% if spel.game_over %}
+  <div class="result-panel game-result-panel">
+    <div style="font-size: 24px; margin-bottom: 10px;">
+      <strong>{{ spel.resultaat }}</strong>
+    </div>
+  </div>
+  {% endif %}
+
   {# ACTIE KNOPPEN - Blackjack style #}
   <div class="actions" style="display:flex; flex-direction:row; gap:12px; align-items:center; justify-content:center; margin-top: 20px;">
-    
+
     {# ACTIVE GAME: Tick, Snip, Cut #}
     {% if not spel.game_over %}
       {# Cut the Fuse - available anytime if not used yet #}
@@ -95,12 +104,12 @@
           <button type="submit" class="btn warn">Cut the Fuse (2x inzet)</button>
         </form>
       {% endif %}
-      
+
       <form method="post" action="{{ url_for('game') }}" style="margin:0;">
         <input type="hidden" name="actie" value="tick">
         <button type="submit" class="btn primary">Tick (Hit)</button>
       </form>
-      
+
       {% if spel.rolls|length >= 2 %}
         <form method="post" action="{{ url_for('game') }}" style="margin:0;">
           <input type="hidden" name="actie" value="snip">
@@ -108,23 +117,14 @@
         </form>
       {% endif %}
     {% endif %}
-    
+
     {# GAME OVER #}
     {% if spel.game_over %}
       <a href="{{ url_for('reset') }}" class="btn primary">Opnieuw spelen</a>
       <a href="{{ url_for('index') }}" class="btn secondary">Home</a>
     {% endif %}
-    
-  </div>
 
-  {# RESULTAAT #}
-  {% if spel.game_over %}
-  <div class="result-panel game-result-panel">
-    <div style="font-size: 24px; margin-bottom: 10px;">
-      <strong>{{ spel.resultaat }}</strong>
-    </div>
   </div>
-  {% endif %}
 
 </div>
 

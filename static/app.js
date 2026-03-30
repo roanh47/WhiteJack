@@ -234,12 +234,17 @@
             `;
         }
         
-        // Show result panel
+        // Show result panel (insert before actions, after table)
         let resultPanel = document.querySelector('.result-panel');
         if (!resultPanel) {
             resultPanel = document.createElement('div');
             resultPanel.className = 'result-panel game-result-panel';
-            gameStage?.appendChild(resultPanel);
+            const actionsDiv = gameStage?.querySelector('.actions');
+            if (actionsDiv) {
+                gameStage.insertBefore(resultPanel, actionsDiv);
+            } else {
+                gameStage?.appendChild(resultPanel);
+            }
         } else {
             resultPanel.classList.add('game-result-panel');
         }

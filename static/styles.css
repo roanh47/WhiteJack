@@ -240,13 +240,8 @@ body.game-page .actions .btn{
   text-align:center;
 }
 .game-result-panel{
-  position:absolute;
-  left:50%;
-  bottom:92px;
-  transform:translateX(-50%);
-  z-index:9500;
   width:min(520px, calc(100vw - 32px));
-  margin:0;
+  margin:12px auto 0 auto;
   background:rgba(0,0,0,0.62);
   border:1px solid rgba(255,255,255,0.12);
   box-shadow:0 16px 40px rgba(0,0,0,0.45);
