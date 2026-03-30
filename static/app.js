@@ -4,6 +4,29 @@
     
     const ROLL_DURATION = 1500;  // Longer roll (was 600ms)
     const SCROLL_SPEED = 80;     // Slower number changes (was 50ms)
+    let actionLocked = false;
+
+    function lockActionUI() {
+        actionLocked = true;
+        setButtonsEnabled(false);
+    }
+
+    function unlockActionUI() {
+        actionLocked = false;
+        setButtonsEnabled(true);
+    }
+
+    function isWinningResult(resultText) {
+        const text = String(resultText || '').toLowerCase();
+        return text.includes('wint') || text.includes('auto-win');
+    }
+
+    function playConfetti() {
+        const script = document.createElement('script');
+        script.src = 'https://run.confettipage.com/here.js';
+        script.dataset.confetticode = 'U2FsdGVkX1/mueQ6QB9Kdu4EuZlSHJWt4hos+OMOwhNnTx8i+zKlK2UHSdhBlRLaFRWioL7WwrxfTRWEaqYAhTTC6pGzPCwIIuGdp0SAaMSCaaGrpRJYCd/m6HJAPASTrOC4CWtswIkD9s3XuY/Don4yWYWJlhzbJoGy5LxFGK7+M6uXqmkrBQLXkjiqAp3y99raeC9plPVJAu+3BdJ5YHwtL2yL+QBzdeWvjgXckH8zMWoUaVpMF9c28OEJWVq5MZDYYa983uaI2gMs9iQHfGtmPfYP0bvdIYuaMnoausq8bsyBP4IsopsNIiF7bu+LGdle/BYeg79BmRZzbiEgzJwPaMN1tgTr6SFUJ8aadPwupBMWlmlv5dDE2JnmL+NWRhvd/yv/fpciaMNgjonlPHW8qLLDOePhiuBy77x3g7K3y/Q+BrMRH8UOlStKWdxwKfAF8L8KChzbrzV9/kmRoZPNv1QBqk1hI1Qu/u+jeBOQFmh/PEUCnSxBYH7jwQQABQo7kfHBUBkFa63ibwRvjf1nb3y4T+Ou3+aQfM7LJ+p8F+6ZpXQYlYr8sMck9G7NyuFNTa1lcgYm0Jfldd1zAUlq1ttXBHjzXvLdUGh4iCm7R5S30+GNfsK0hYT0F6wUwQkKb40q1x4ZnDk5alEI9OaoZoJaztIi/0TpCEeAIDIlvimlRTSl22zLVMdkZzb9a+C4o/lYlGWwMHBq5hFgzHuQTmfSYqQSIEGZTMZLtvOKblw1fZLxVYur/3PcgXfaXZjGjEOHGFLTrxZ/KePHqQ==';
+        document.body.appendChild(script);
+    }
     
     // Helper to show/hide totals
     function showTotals(show) {
@@ -48,6 +71,7 @@
 
         actions.innerHTML = buttons.join('');
         setupForms(actions);
+        setButtonsEnabled(!actionLocked);
     }
     
     // Helper to enable/disable buttons
@@ -59,6 +83,8 @@
     
     // Scroll a number element
     function scrollNumber(element, duration = ROLL_DURATION) {
+        const finalValue = element?.dataset?.value;
+
         const interval = setInterval(() => {
             element.textContent = Math.floor(Math.random() * 12) + 1;
         }, SCROLL_SPEED);
@@ -66,6 +92,9 @@
         return new Promise(resolve => {
             setTimeout(() => {
                 clearInterval(interval);
+                if (finalValue !== undefined && finalValue !== null && finalValue !== '') {
+                    element.textContent = String(finalValue);
+                }
                 resolve();
             }, duration);
         });
@@ -111,6 +140,9 @@
         const gameStage = document.querySelector('.game-stage');
         if (gameStage) {
             gameStage.dataset.initialDeal = data.is_initial_deal ? 'true' : 'false';
+            if (!data.game_over) {
+                gameStage.classList.remove('game-over');
+            }
         }
 
         updateActionButtons(data);
@@ -123,6 +155,12 @@
     
     // Show game over state
     function showGameOver(data) {
+        actionLocked = true;
+        const gameStage = document.querySelector('.game-stage');
+        if (gameStage) {
+            gameStage.classList.add('game-over');
+        }
+
         // Update title
         const title = document.querySelector('.ronde-titel');
         if (title) title.textContent = 'Uitslag';
@@ -140,16 +178,15 @@
         let resultPanel = document.querySelector('.result-panel');
         if (!resultPanel) {
             resultPanel = document.createElement('div');
-            resultPanel.className = 'result-panel';
-            resultPanel.style.cssText = 'margin-top: 30px; text-align: center;';
-            document.querySelector('.game-stage').appendChild(resultPanel);
+            resultPanel.className = 'result-panel game-result-panel';
+            gameStage?.appendChild(resultPanel);
+        } else {
+            resultPanel.classList.add('game-result-panel');
         }
         resultPanel.innerHTML = `
             <div style="font-size: 24px; margin-bottom: 10px;">
                 <strong>${data.resultaat}</strong>
             </div>
-            <div><strong>Jij:</strong> ${data.player_total}</div>
-            <div><strong>Scar:</strong> ${data.scar_total}</div>
         `;
         resultPanel.style.display = 'block';
         
@@ -157,6 +194,10 @@
         const moneyEl = document.querySelector('[style*="color:#4CAF50"]');
         if (moneyEl && data.money !== undefined) {
             moneyEl.textContent = '€' + data.money;
+        }
+
+        if (isWinningResult(data.resultaat)) {
+            playConfetti();
         }
     }
     
@@ -211,14 +252,14 @@
             } catch (e) { /* ignore playback errors */ }
         }
 
-        setButtonsEnabled(false);
+        lockActionUI();
         showTotals(false); // Hide totals during roll
 
         if (isOpeningDeal) {
             const data = await submitAction(form);
             if (!data) {
                 showTotals(true);
-                setButtonsEnabled(true);
+                unlockActionUI();
                 return;
             }
 
@@ -228,7 +269,7 @@
             if (data.game_over) {
                 showGameOver(data);
             } else {
-                setButtonsEnabled(true);
+                unlockActionUI();
             }
             return;
         }
@@ -247,7 +288,7 @@
         const data = await submitAction(form);
         if (!data) {
             showTotals(true);
-            setButtonsEnabled(true);
+            unlockActionUI();
             return;
         }
         
@@ -268,7 +309,7 @@
             
             // Re-enable buttons if game not over
             if (!data.game_over) {
-                setButtonsEnabled(true);
+                unlockActionUI();
             }
         }
     }
@@ -281,7 +322,7 @@
             return;
         }
         
-        setButtonsEnabled(false);
+        lockActionUI();
         showTotals(false); // Hide totals during roll
         
         // Double the bet display
@@ -306,7 +347,7 @@
         const data = await submitAction(form);
         if (!data) {
             showTotals(true);
-            setButtonsEnabled(true);
+            unlockActionUI();
             return;
         }
 
@@ -323,14 +364,14 @@
 
             // Re-enable buttons if game not over
             if (!data.game_over) {
-                setButtonsEnabled(true);
+                unlockActionUI();
             }
         }
     }
     
     // Handle player snip (stand)
     async function handleSnip(form) {
-        setButtonsEnabled(false);
+        lockActionUI();
         showTotals(false); // Hide totals during Scar's roll
         
         // Submit and update (Scar's dice added but result hidden)
@@ -338,7 +379,7 @@
         const data = await submitAction(form);
         if (!data) {
             showTotals(true);
-            setButtonsEnabled(true);
+            unlockActionUI();
             return;
         }
         
@@ -357,6 +398,10 @@
             showGameOver(data);
             showTotals(true);
         }
+
+        if (!data.game_over) {
+            unlockActionUI();
+        }
     }
     
     // Animate Scar's extra dice with progressive total updates
@@ -366,6 +411,11 @@
         
         const dice = scarContainer.querySelectorAll('.card.scar-roll');
         const extraDice = Array.from(dice).slice(existingDiceCount);
+
+        // Hide all newly added Scar dice so they can be revealed one-by-one.
+        extraDice.forEach(die => {
+            die.style.visibility = 'hidden';
+        });
         
         // Calculate running total from dice that were already visible before this action.
         let runningTotal = 0;
@@ -381,6 +431,9 @@
         // Animate each extra die and update total progressively
         for (let i = 0; i < extraDice.length; i++) {
             const die = extraDice[i];
+
+            // Reveal exactly one die at a time.
+            die.style.visibility = 'visible';
             await scrollNumber(die, 800); // Slightly longer for drama
             
             // Add this die's value to running total
@@ -440,6 +493,9 @@
             form.dataset.jsBound = 'true';
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
+                if (actionLocked) {
+                    return;
+                }
                 const action = form.querySelector('input[name="actie"]')?.value;
                 
                 if (action === 'tick') await handleTick(form);
