@@ -190,13 +190,11 @@ body.game-page .table-slot .hand-meta{
   text-align:center;
   font-size:1.3rem;
 }
-body.game-page .scar-slot .hand-meta{
-  margin-top:4px;
+body.game-page .scar-slot .hand-header{
   margin-bottom:8px;
 }
-body.game-page .player-slot .hand-meta{
+body.game-page .player-slot .hand-header{
   margin-top:8px;
-  margin-bottom:4px;
 }
 .total,.scar-total{
   font-variant-numeric:tabular-nums;
