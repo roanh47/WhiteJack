@@ -5,6 +5,7 @@ from flask import Flask, render_template, session, redirect, url_for, request, f
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import text
 import random
 
 app = Flask(__name__)
@@ -27,6 +28,8 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
     money = db.Column(db.Integer, default=100)  # Start met €100
+    wins = db.Column(db.Integer, default=0)
+    losses = db.Column(db.Integer, default=0)
     
     def set_password(self, password):
         """Hash het wachtwoord voor veilige opslag"""
@@ -222,6 +225,14 @@ def game():
     )
 
 
+@app.route('/scoreboard')
+@login_required
+def scoreboard():
+    """Scoreboard - overzicht van alle spelers"""
+    spelers = User.query.order_by(User.money.desc()).all()
+    return render_template('scoreboard.html', spelers=spelers)
+
+
 @app.route('/reset')
 @login_required
 def reset():
@@ -236,6 +247,7 @@ def reset():
 def win_money(amount):
     """Geef winst aan gebruiker"""
     current_user.money += amount
+    current_user.wins += 1
     db.session.commit()
     flash(f'Je wint €{amount}!', 'success')
 
@@ -243,6 +255,7 @@ def win_money(amount):
 def lose_money(amount):
     """Haal verlies af van gebruiker"""
     current_user.money -= amount
+    current_user.losses += 1
     db.session.commit()
     flash(
         f'Je hebt de vorige ronde {amount} euro verloren. '
@@ -349,6 +362,13 @@ def bepaal_winaar(spel):
 # =============================================================================
 with app.app_context():
     db.create_all()
+    # Migratie: voeg wins/losses kolommen toe aan bestaande databases
+    for kolom in ('wins', 'losses'):
+        try:
+            db.session.execute(text(f'ALTER TABLE user ADD COLUMN {kolom} INTEGER DEFAULT 0'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
 
 if __name__ == '__main__':

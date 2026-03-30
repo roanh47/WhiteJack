@@ -1,0 +1,146 @@
+{% extends 'layout.html' %}
+{% block body_class %}lobby-page{% endblock %}
+{% block body %}
+
+<div style="width:min(900px,100%);margin:0 auto;">
+  <div style="text-align:center;margin-bottom:24px;">
+    <p class="auth-eyebrow">Ranglijst</p>
+    <h2 style="font-size:clamp(2rem,5vw,3.5rem);margin:0;">Scoreboard</h2>
+  </div>
+
+  <div class="auth-card" style="padding:0;overflow-x:auto;">
+    <table id="scoreboard-tabel" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th data-col="0" class="sorteerbaar">#</th>
+          <th data-col="1" class="sorteerbaar">Naam</th>
+          <th data-col="2" class="sorteerbaar">Geld</th>
+          <th data-col="3" class="sorteerbaar">Gewonnen</th>
+          <th data-col="4" class="sorteerbaar">Verloren</th>
+          <th data-col="5" class="sorteerbaar">Totaal rondes</th>
+          <th data-col="6" class="sorteerbaar">W/V %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for speler in spelers %}
+        {% set totaal = speler.wins + speler.losses %}
+        {% set wv = ((speler.wins / totaal * 100) | round(1)) if totaal > 0 else 0 %}
+        <tr>
+          <td data-waarde="{{ loop.index }}">{{ loop.index }}</td>
+          <td>{{ speler.username }}</td>
+          <td data-waarde="{{ speler.money }}">€{{ speler.money }}</td>
+          <td data-waarde="{{ speler.wins }}">{{ speler.wins }}</td>
+          <td data-waarde="{{ speler.losses }}">{{ speler.losses }}</td>
+          <td data-waarde="{{ totaal }}">{{ totaal }}</td>
+          <td data-waarde="{{ wv }}">{{ wv }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:20px;text-align:center;">
+    <a href="{{ url_for('lobby') }}" class="btn primary">← Terug naar lobby</a>
+  </div>
+</div>
+
+
+<style>
+#scoreboard-tabel th.sorteerbaar {
+  cursor:pointer;
+  user-select:none;
+  background:rgba(255,255,255,0.05);
+  padding:12px 16px;
+  text-align:left;
+  color:var(--accent);
+  font-size:0.9rem;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  white-space:nowrap;
+}
+#scoreboard-tabel th.sorteerbaar:hover {
+  background:rgba(255,255,255,0.1);
+}
+#scoreboard-tabel th .pijl {
+  margin-left:6px;
+  opacity:0.4;
+  font-size:0.8rem;
+}
+#scoreboard-tabel th.actief .pijl {
+  opacity:1;
+}
+#scoreboard-tabel td {
+  padding:10px 16px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+  color:#eaf3ff;
+  font-size:0.95rem;
+}
+#scoreboard-tabel tbody tr:last-child td {
+  border-bottom:none;
+}
+#scoreboard-tabel tbody tr:hover td {
+  background:rgba(255,255,255,0.03);
+}
+</style>
+
+<script>
+(function() {
+  const tabel = document.getElementById('scoreboard-tabel');
+  const headers = tabel.querySelectorAll('th.sorteerbaar');
+  let huidigKolom = -1;
+  let oplopend = true;
+
+  headers.forEach(th => {
+    const pijl = document.createElement('span');
+    pijl.className = 'pijl';
+    pijl.textContent = '↕';
+    th.appendChild(pijl);
+
+    th.addEventListener('click', () => {
+      const kolom = parseInt(th.dataset.col);
+      if (huidigKolom === kolom) {
+        oplopend = !oplopend;
+      } else {
+        oplopend = true;
+        huidigKolom = kolom;
+      }
+
+      headers.forEach(h => {
+        h.classList.remove('actief');
+        h.querySelector('.pijl').textContent = '↕';
+      });
+      th.classList.add('actief');
+      th.querySelector('.pijl').textContent = oplopend ? '↑' : '↓';
+
+      sorteer(kolom, oplopend);
+    });
+  });
+
+  function sorteer(kolom, oplopend) {
+    const tbody = tabel.querySelector('tbody');
+    const rijen = Array.from(tbody.querySelectorAll('tr'));
+
+    rijen.sort((a, b) => {
+      const celA = a.querySelectorAll('td')[kolom];
+      const celB = b.querySelectorAll('td')[kolom];
+
+      const waardeA = celA.dataset.waarde !== undefined ? parseFloat(celA.dataset.waarde) : celA.textContent.trim();
+      const waardeB = celB.dataset.waarde !== undefined ? parseFloat(celB.dataset.waarde) : celB.textContent.trim();
+
+      let vergelijking;
+      if (typeof waardeA === 'number' && typeof waardeB === 'number') {
+        vergelijking = waardeA - waardeB;
+      } else {
+        vergelijking = String(waardeA).localeCompare(String(waardeB), 'nl');
+      }
+
+      return oplopend ? vergelijking : -vergelijking;
+    });
+
+    rijen.forEach(rij => {
+      tbody.appendChild(rij);
+    });
+  }
+})();
+</script>
+
+{% endblock %}

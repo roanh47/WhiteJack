@@ -152,10 +152,10 @@ input[type=number]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,2
   align-items:center;
 }
 .scar-slot{
-  top:20%;
+  top:22.6%;
 }
 .player-slot{
-  bottom:20%;
+  bottom:21%;
 }
 .table-slot .card-group{
   width:100%;
@@ -174,7 +174,7 @@ body.game-page .table-slot .hand-header{
   justify-content:center;
 }
 body.game-page .player-slot .hand-header{
-  margin-bottom:0;
+  margin-bottom:22px;
   margin-top:8px;
 }
 body.game-page .table-slot .hand-header .bet{
@@ -192,12 +192,12 @@ body.game-page .table-slot .hand-meta{
   font-size:1.3rem;
 }
 body.game-page .scar-slot .hand-meta{
-  margin-top:4px;
-  margin-bottom:8px;
+  margin-top:8px;
+  margin-bottom:22px;
 }
 body.game-page .player-slot .hand-meta{
-  margin-top:8px;
-  margin-bottom:4px;
+  margin-top:22px;
+  margin-bottom:8px;
 }
 .total,.scar-total{
   font-variant-numeric:tabular-nums;
@@ -387,6 +387,7 @@ body.game-page .actions .btn{
   margin-right:0;
   padding:14px 18px;
   border-radius:12px;
+  font-size:1.1rem;
 }
 
 .lobby-shell{
@@ -553,8 +554,8 @@ form.lobby-form input[type=number]{
   body{padding:18px}
   .roll-display{min-width:60px}
   .ronde-titel{margin-bottom:8px}
-  .scar-slot{top:20%}
-  .player-slot{bottom:24%}
+  .scar-slot{top:22.6%}
+  .player-slot{bottom:21%}
   .tafel-logo{width:min(18%,90px)}
   .table-slot{width:min(84%,520px)}
   .table-slot .card-group{min-width:0}
