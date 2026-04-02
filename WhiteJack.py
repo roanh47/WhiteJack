@@ -132,6 +132,7 @@ def start():
     # Start spel
     session['spel'] = {
         'bet': bet,
+        'original_bet': bet,
         'rolls': [],
         'scar_rolls': [],
         'cut_used': False,
@@ -236,9 +237,25 @@ def scoreboard():
 @app.route('/reset')
 @login_required
 def reset():
-    """Reset het spel en ga terug naar lobby"""
-    session.pop('spel', None)
-    return redirect(url_for('lobby'))
+    """Reset het spel en start opnieuw met dezelfde inzet"""
+    spel = session.get('spel')
+    original_bet = spel.get('original_bet', 1) if spel else 1
+
+    if original_bet > current_user.money:
+        session.pop('spel', None)
+        return redirect(url_for('lobby'))
+
+    session['spel'] = {
+        'bet': original_bet,
+        'original_bet': original_bet,
+        'rolls': [],
+        'scar_rolls': [],
+        'cut_used': False,
+        'resultaat': None,
+        'game_over': False,
+        'player_done': False
+    }
+    return redirect(url_for('game'))
 
 
 # =============================================================================
