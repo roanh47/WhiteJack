@@ -30,16 +30,16 @@
       <h3>Start een nieuw spel</h3>
       <p>Zet slim in, blijf onder 24 en versla Scar.</p>
 
-      <form method="post" action="{{ url_for('start') }}" class="lobby-form">
+      <form method="post" action="{{ url_for('game.start') }}" class="lobby-form">
         <label for="bet" class="lobby-bet-label">Inzet (€)</label>
         <input id="bet" type="number" name="bet" value="10" min="1" max="{{ user.money }}" required>
         <button type="submit" class="btn primary auth-submit">Speel WhiteJack!</button>
-        <a href="{{ url_for('scoreboard') }}" class="btn auth-submit" style="width:100%;background:#1a3fa8;color:var(--accent);font-weight:700;text-decoration:none;margin-top:10px;box-sizing:border-box;">Scoreboard</a>
+        <a href="{{ url_for('game.scoreboard') }}" class="btn auth-submit" style="width:100%;background:#1a3fa8;color:var(--accent);font-weight:700;text-decoration:none;margin-top:10px;box-sizing:border-box;">Scoreboard</a>
       </form>
 
       <div class="lobby-divider"></div>
 
-      <a href="{{ url_for('logout') }}" class="btn secondary lobby-logout">Uitloggen</a>
+      <a href="{{ url_for('auth.logout') }}" class="btn secondary lobby-logout">Uitloggen</a>
     </section>
   </div>
 </div>

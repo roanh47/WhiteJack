@@ -34,7 +34,7 @@
       <section class="auth-panel auth-panel-login">
         <h3>Welkom terug</h3>
         <p>Pak je saldo weer op en speel direct verder.</p>
-        <form method="post" action="{{ url_for('login') }}" class="auth-form">
+        <form method="post" action="{{ url_for('auth.login') }}" class="auth-form">
           <input type="text" name="username" placeholder="Gebruikersnaam" required>
           <input type="password" name="password" placeholder="Wachtwoord" required>
           <button type="submit" class="btn primary auth-submit">Inloggen</button>
@@ -44,7 +44,7 @@
       <section class="auth-panel auth-panel-register">
         <h3>Nieuwe speler</h3>
         <p>Maak een account aan en ontvang meteen je startgeld.</p>
-        <form method="post" action="{{ url_for('register') }}" class="auth-form">
+        <form method="post" action="{{ url_for('auth.register') }}" class="auth-form">
           <input type="text" name="username" placeholder="Gebruikersnaam" required>
           <input type="password" name="password" placeholder="Wachtwoord" required>
           <button type="submit" class="btn secondary auth-submit">Account aanmaken</button>

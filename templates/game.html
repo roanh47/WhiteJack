@@ -97,19 +97,19 @@
     {% if not spel.game_over %}
       {# Cut the Fuse - available anytime if not used yet #}
       {% if not spel.cut_used and spel.rolls|length >= 2 %}
-        <form method="post" action="{{ url_for('game') }}" style="margin:0;">
+        <form method="post" action="{{ url_for('game.game') }}" style="margin:0;">
           <input type="hidden" name="actie" value="cut">
           <button type="submit" class="btn warn">Cut the Fuse (2x inzet)</button>
         </form>
       {% endif %}
 
-      <form method="post" action="{{ url_for('game') }}" style="margin:0;">
+      <form method="post" action="{{ url_for('game.game') }}" style="margin:0;">
         <input type="hidden" name="actie" value="tick">
         <button type="submit" class="btn primary">Tick (Hit)</button>
       </form>
 
       {% if spel.rolls|length >= 2 %}
-        <form method="post" action="{{ url_for('game') }}" style="margin:0;">
+        <form method="post" action="{{ url_for('game.game') }}" style="margin:0;">
           <input type="hidden" name="actie" value="snip">
           <button type="submit" class="btn secondary">Snip (Stand)</button>
         </form>
@@ -118,8 +118,8 @@
 
     {# GAME OVER #}
     {% if spel.game_over %}
-      <a href="{{ url_for('reset') }}" class="btn primary">Opnieuw spelen</a>
-      <a href="{{ url_for('index') }}" class="btn secondary">Home</a>
+      <a href="{{ url_for('game.reset') }}" class="btn primary">Opnieuw spelen</a>
+      <a href="{{ url_for('auth.index') }}" class="btn secondary">Home</a>
     {% endif %}
 
   </div>

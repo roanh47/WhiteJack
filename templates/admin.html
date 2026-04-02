@@ -24,7 +24,7 @@
   {# Nieuwe gebruiker aanmaken #}
   <div class="auth-card" style="margin-bottom:24px;padding:20px 24px;">
     <h3 style="margin:0 0 16px;color:var(--accent);">Gebruiker aanmaken</h3>
-    <form method="post" action="{{ url_for('admin_create') }}" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+    <form method="post" action="{{ url_for('admin.admin_create') }}" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
       <div style="display:flex;flex-direction:column;gap:4px;">
         <label style="font-size:0.8rem;color:#aaa;">Gebruikersnaam</label>
         <input name="username" type="text" required placeholder="gebruikersnaam" class="admin-input">
@@ -69,32 +69,32 @@
             <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
 
               {# Geld instellen #}
-              <form method="post" action="{{ url_for('admin_set_money', user_id=user.id) }}" style="display:flex;gap:4px;">
+              <form method="post" action="{{ url_for('admin.admin_set_money', user_id=user.id) }}" style="display:flex;gap:4px;">
                 <input name="amount" type="number" value="{{ user.money }}" min="0" class="admin-input" style="width:75px;">
                 <button type="submit" class="btn-admin btn-warn">Geld</button>
               </form>
 
               {# Wachtwoord resetten #}
-              <form method="post" action="{{ url_for('admin_reset_password', user_id=user.id) }}" style="display:flex;gap:4px;">
+              <form method="post" action="{{ url_for('admin.admin_reset_password', user_id=user.id) }}" style="display:flex;gap:4px;">
                 <input name="password" type="text" placeholder="nieuw ww" class="admin-input" style="width:90px;">
                 <button type="submit" class="btn-admin btn-secondary">Reset ww</button>
               </form>
 
               {# Stats resetten #}
-              <form method="post" action="{{ url_for('admin_reset_stats', user_id=user.id) }}">
+              <form method="post" action="{{ url_for('admin.admin_reset_stats', user_id=user.id) }}">
                 <button type="submit" class="btn-admin btn-secondary">Reset stats</button>
               </form>
 
               {# Admin toggle #}
               {% if user.id != current_user.id %}
-              <form method="post" action="{{ url_for('admin_toggle_admin', user_id=user.id) }}">
+              <form method="post" action="{{ url_for('admin.admin_toggle_admin', user_id=user.id) }}">
                 <button type="submit" class="btn-admin {{ 'btn-warn' if user.is_admin else 'btn-secondary' }}">
                   {{ 'Admin af' if user.is_admin else 'Maak admin' }}
                 </button>
               </form>
 
               {# Verwijderen #}
-              <form method="post" action="{{ url_for('admin_delete', user_id=user.id) }}" onsubmit="return confirm('Weet je zeker dat je {{ user.username }} wilt verwijderen?')">
+              <form method="post" action="{{ url_for('admin.admin_delete', user_id=user.id) }}" onsubmit="return confirm('Weet je zeker dat je {{ user.username }} wilt verwijderen?')">
                 <button type="submit" class="btn-admin btn-danger">Verwijder</button>
               </form>
               {% endif %}
@@ -108,7 +108,7 @@
   </div>
 
   <div style="margin-top:20px;text-align:center;">
-    <a href="{{ url_for('lobby') }}" class="btn secondary">← Terug naar lobby</a>
+    <a href="{{ url_for('game.lobby') }}" class="btn secondary">← Terug naar lobby</a>
   </div>
 </div>
 
